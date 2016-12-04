@@ -318,10 +318,10 @@ ConfigTokenRetrieve (char *token, char *configToken)
 #endif
 	      /* search for the token and make sure the trailing character */
 	      /* is a " " or "=" to make sure the entire token was found */
-	      if ((strstr (buffer, token) != (char) NULL) && 
+	      if ((strstr (buffer, token) != NULL) && 
 		   ((buffer[strlen(token)] == '=') || (buffer[strlen(token)] == ' '))) 
 		{		/* cut off the '=' and send it back */
-		  if (strstr (buffer, "\"") == (char) NULL)
+		  if (strstr (buffer, "\"") == NULL)
 		    {
 		      Log ("adminalert: Quotes missing from %s token. Option skipped\n", token);
 		      fclose (config);
@@ -667,7 +667,7 @@ IsBlocked (char *target, char *filename)
 
   while (fgets (buffer, MAXBUF, input) != NULL)
   {
-	if((ipOffset = strstr(buffer, target)) != (char) NULL)
+	if((ipOffset = strstr(buffer, target)) != NULL)
 	{
 		for(count = 0; count < strlen(ipOffset); count++)
 		{
@@ -724,7 +724,7 @@ char tempString[MAXBUF], *tempStringPtr;
 #endif
 
 	/* string not found in target */
-  	if (strstr (target, find) == (char) NULL)
+  	if (strstr (target, find) == NULL)
 	{
 		strncpy(result, target, MAXBUF);
 		#ifdef DEBUG
