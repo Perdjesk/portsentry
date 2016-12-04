@@ -4,19 +4,24 @@
 # of PortSentry. This is useful for dynamic IP hosts and                #
 # should be run after each reboot or IP change.                         #
 #                                                                       #
-# Author: Christopher P. Lindsey <lindsey at mallorn.com>               #
+# Author: Christopher P. Lindsey <lindsey@mallorn.com>                  #
 # Date: 06-03-99                                                        #
 # Note: Created script                                                  #
 #                                                                       #
-# Modified: Craig H. Rowland <crowland at psionic.com>                  #
+# Modified: Craig H. Rowland <crowland@psionic.com>                     #
 # Modified Date: 06-03-99                                               #
 # Modified Note: Fixed /tmp race condition. Added secure path.          #
 #                                                                       #
-# Modified: Christopher P. Lindsey <lindsey at mallorn.com>             #
+# Modified: Christopher P. Lindsey <lindsey@mallorn.com>                #
 # Modified Date: 06-04-99                                               #
 # Modified Note: Added support for various OSs, -f flag on startup      #
+#									#
+# Modified: Craig H. Rowland <crowland@psionic.com>	                #
+# Modified Date: 04-08-02                                               #
+# Modified Note: Changed SENTRYDIR to portsentry2			#
+#									#	
 #                                                                       #
-# $Id: ignore.csh,v 1.5 2003/05/23 17:45:21 crowland Exp crowland $     #
+# $Id: ignore.csh,v 1.5 2002/04/08 17:23:58 crowland Exp crowland $     #
 #########################################################################
 
 # Choose an OS
@@ -35,7 +40,7 @@ elseif ($OS == "NeXTStep" || $OS == "SunOS 4.x") then
 endif
   
 # Safe directory 
-set SENTRYDIR=/usr/local/psionic/portsentry
+set SENTRYDIR=/usr/local/psionic/portsentry2
 set TMPFILE=portsentry.ignore.tmp
  
 if (-f $SENTRYDIR/portsentry.ignore) then 

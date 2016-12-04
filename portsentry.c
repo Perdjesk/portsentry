@@ -1,161 +1,141 @@
 /************************************************************************/
 /*                                                                      */
-/* PortSentry								*/
+/* Psionic PortSentry																										*/
 /*                                                                      */
 /* Created: 10-12-1997                                                  */
-/* Modified: 05-23-2003                                                 */
+/* Modified: 03-27-2002                                                 */
 /*                                                                      */
-/* Send all changes/modifications/bugfixes to:				*/
-/* craigrowland at users dot sourceforge dot net    			*/
+/* Send all changes/modifications/bugfixes to sentrysupport@psionic.com */
 /*                                                                      */
 /*                                                                      */
-/* This software is Copyright(c) 1997-2003 Craig Rowland	        */
+/* This software is Copyright(c) 1997-2002 Psionic Technologies, Inc.   */
 /*                                                                      */
-/* This software is covered under the Common Public License v1.0	*/
-/* See the enclosed LICENSE file for more information.			*/
-/* $Id: portsentry.c,v 1.40 2003/05/23 17:41:25 crowland Exp crowland $ */
+/* Disclaimer:                                                          */
+/*                                                                      */
+/* All software distributed by Psionic Technologies is distributed 			*/
+/* AS IS and carries NO WARRANTY or GUARANTEE OF ANY KIND. End users of */
+/* the software acknowledge that they will not hold Psionic Technologies*/
+/* liable for failure or non-function of the software product. YOU ARE 	*/
+/* USING THIS PRODUCT AT YOUR OWN RISK.																	*/
+/*                                                                      */
+/* Licensing restrictions apply. Commercial re-sell is prohibited under */
+/* certain conditions. See the license that came with this package or 	*/
+/* visit http://www.psionic.com for more information. 									*/
+/*                                                                      */
+/* $Id: portsentry.c,v 1.53 2002/04/08 16:48:15 crowland Exp crowland $ */
 /************************************************************************/
-
 
 #include "portsentry.h"
 #include "portsentry_io.h"
 #include "portsentry_util.h"
 
-/* Global variables */
-char gblScanDetectHost[MAXSTATE][IPMAXBUF];
-char gblKillRoute[MAXBUF];
-char gblKillHostsDeny[MAXBUF];
-char gblKillRunCmd[MAXBUF];
-char gblBlockedFile[MAXBUF];
-char gblHistoryFile[MAXBUF];
-char gblIgnoreFile[MAXBUF];
-char gblDetectionType[MAXBUF];
+/* Globals */
+pcap_t *gblPcapSocketPtr;
+pcap_t *gblHandlePtr;
+bpf_u_int32 gblAddressPcapPtr;
+bpf_u_int32 gblNetmaskPcapPtr;
+int gblDataLink;
+int gblLinkSize;
+struct in_addr gblSrc, gblDst;
+char gblAttackerIP[IPMAXBUF], gblTargetIP[IPMAXBUF];
 
-int gblScanDetectCount = 0;
-int gblBlockTCP = 0;
-int gblBlockUDP = 0;
-int gblRunCmdFirst = 0;
-int gblResolveHost = 0;
-int gblConfigTriggerCount = 0;
+struct {
+	char gblScanDetectHost[MAXSTATE][IPMAXBUF];
+	char gblKillRoute[MAXBUF];
+	char gblKillHostsDeny[MAXBUF];
+	char gblKillRunCmd[MAXBUF];
+	char gblBlockedFile[MAXBUF];
+	char gblHistoryFile[MAXBUF];
+	char gblIgnoreFile[MAXBUF];
+	char gblInterface[MAXBUF];
+	char gblInterfaceAddr[MAXBUF];
+	int gblScanDetectCount;
+	int gblTriggerCount;
+} gblConfig;
 
-int
-main (int argc, char *argv[])
+
+struct {
+	int gblBlockTCP;
+	int gblBlockUDP;
+	int gblRunCmdFirst;
+	int gblResolveHost;
+	int gblIPChecks;
+	int gblTCPChecks;
+	int gblUDPChecks;
+	int gblICMPChecks;
+} gblFlags;
+
+
+/* Here we go */
+int main (int argc, char **argv)
 {
-  if (argc != 2)
-    {
-      Usage ();
-      Exit (ERROR);
-    }
-
-  if ((geteuid ()) && (getuid ()) != 0)
-    {
-      printf ("You need to be root to run this.\n");
-      Exit (ERROR);
-    }
 
 
-  /* Cheesy arg parser. Some systems don't support getopt and I don't want to port it. */
-  if ((strcmp (argv[1], "-tcp")) && (strcmp (argv[1], "-udp"))
-      && (strcmp (argv[1], "-stcp")) && (strcmp (argv[1], "-atcp"))
-      && (strcmp (argv[1], "-sudp")) && (strcmp (argv[1], "-audp")) != 0)
-    {
-      Usage ();
-      Exit (ERROR);
-    }
-  else
-    {
-      Start ();
-      /* This copies the startup type to a global for later use */
-      if ((SafeStrncpy (gblDetectionType, strstr (argv[1], "-") + 1, MAXBUF))
-	  == NULL)
+if (argc != 1)
 	{
-	  Log("adminalert: ERROR: Error setting internal scan detection type.\n");
-	  printf ("ERROR: Error setting internal scan detection type.\n");
-	  printf ("ERROR: PortSentry is shutting down!\n");
-	  Exit (ERROR);
+		Usage ();
+		ExitNow (ERROR);
 	}
-      else if (CheckConfig () == FALSE)
+else if ((geteuid ()) && (getuid ()) != 0)
+	{
+		printf ("You need to be root to run this.\n");
+		ExitNow (ERROR);
+	}
+else if (CheckConfig () != TRUE)
 	{
 	  Log ("adminalert: ERROR: Configuration files are missing/corrupted. Shutting down.\n");
 	  printf ("ERROR: Configuration files are missing/corrupted.\n");
 	  printf ("ERROR: Check your syslog for a more detailed error message.\n");
 	  printf ("ERROR: PortSentry is shutting down!\n");
-	  Exit (ERROR);
+	  ExitNow (ERROR);
 	}
-      else if (InitConfig () == FALSE)
+else if (InitConfig () != TRUE)
 	{
 	  Log ("adminalert: ERROR: Your config file is corrupted/missing mandatory option! Shutting down.\n");
 	  printf ("ERROR: Your config file is corrupted/missing mandatory option!\n");
 	  printf ("ERROR: Check your syslog for a more detailed error message.\n");
 	  printf ("ERROR: PortSentry is shutting down!\n");
-	  Exit (ERROR);
+	  ExitNow (ERROR);
+	}
+else if (InitStats () != TRUE)
+	{
+	  Log ("adminalert: ERROR: Couldn't initialize statistics. Shutting down.\n");
+	  printf ("ERROR: Couldn't initialize statistics. Shutting down.\n");
+	  ExitNow (ERROR);
 	}
 #ifndef NODAEMON
-      else if (DaemonSeed () == ERROR)
+else if (DaemonSeed () == ERROR)
 	{
 	  Log ("adminalert: ERROR: could not go into daemon mode. Shutting down.\n");
 	  printf ("ERROR: could not go into daemon mode. Shutting down.\n");
-	  Exit (ERROR);
+	  ExitNow (ERROR);
 	}
 #endif
-    }
+else if (InitInterface (gblConfig.gblInterface) != TRUE)
+	{
+	  Log ("adminalert: ERROR: Couldn't initialize interface. Shutting down.\n");
+	  printf ("ERROR: Couldn't initialize interface. Shutting down.\n");
+	  ExitNow (ERROR);
+	}
+else if(InitFilter() != TRUE)
+	{
+	  Log ("adminalert: ERROR: Couldn't initialize BPF filter. Shutting down.\n");
+	  printf ("ERROR: Couldn't initialize BPF filter. Shutting down.\n");
+	  ExitNow (ERROR);
+	}
+
+Log("adminalert: PortSentry is initialized and monitoring.");
 
 
-  if (strcmp (argv[1], "-tcp") == 0)
-    {
-      if (PortSentryModeTCP () == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not go into PortSentry mode. Shutting down.\n");
-	  Exit (ERROR);
-	}
-    }
-#ifdef SUPPORT_STEALTH
-  else if (strcmp (argv[1], "-stcp") == 0)
-    {
-      if (PortSentryStealthModeTCP () == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not go into PortSentry mode. Shutting down.\n");
-	  Exit (ERROR);
-	}
-    }
-  else if (strcmp (argv[1], "-atcp") == 0)
-    {
-      if (PortSentryAdvancedStealthModeTCP () == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not go into PortSentry mode. Shutting down.\n");
-	  Exit (ERROR);
-	}
-    }
-  else if (strcmp (argv[1], "-sudp") == 0)
-    {
-      if (PortSentryStealthModeUDP () == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not go into PortSentry mode. Shutting down.\n");
-	  Exit (ERROR);
-	}
-    }
-  else if (strcmp (argv[1], "-audp") == 0)
-    {
-      if (PortSentryAdvancedStealthModeUDP () == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not go into PortSentry mode. Shutting down.\n");
-	  Exit (ERROR);
-	}
-    }
-#endif
-  else if (strcmp (argv[1], "-udp") == 0)
-    {
-      if (PortSentryModeUDP () == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not go into PortSentry mode. Shutting down.\n");
-	  Exit (ERROR);
-	}
-    }
+/* Grab multiple packets */
+pcap_loop(gblHandlePtr, -1, PktEngine, NULL);
 
-  Exit (TRUE);
-  /* shuts up compiler warning */
-  return (0);
+/* Close interface */
+pcap_close(gblHandlePtr);
+
+exit(0);
 }
+
 
 /****************************************************************/
 /* Reads generic config options into global variables           */
@@ -166,18 +146,22 @@ InitConfig (void)
   FILE *input;
   char configToken[MAXBUF];
 
-  gblBlockTCP = CheckFlag ("BLOCK_TCP");
-  gblBlockUDP = CheckFlag ("BLOCK_UDP");
-  gblResolveHost = CheckFlag ("RESOLVE_HOST");
+  gblFlags.gblBlockTCP = CheckFlag ("BLOCK_TCP");
+  gblFlags.gblBlockUDP = CheckFlag ("BLOCK_UDP");
+  gblFlags.gblResolveHost = CheckFlag ("RESOLVE_HOST");
+  gblFlags.gblIPChecks = CheckFlag("CHECK_IP");
+  gblFlags.gblTCPChecks = CheckFlag("CHECK_TCP");
+  gblFlags.gblUDPChecks = CheckFlag("CHECK_UDP");
+  gblFlags.gblICMPChecks = CheckFlag("CHECK_ICMP");
 
-  memset (gblKillRoute, '\0', MAXBUF);
-  memset (gblKillHostsDeny, '\0', MAXBUF);
-  memset (gblKillRunCmd, '\0', MAXBUF);
+  memset (gblConfig.gblKillRoute, '\0', MAXBUF);
+  memset (gblConfig.gblKillHostsDeny, '\0', MAXBUF);
+  memset (gblConfig.gblKillRunCmd, '\0', MAXBUF);
 
   if ((ConfigTokenRetrieve ("SCAN_TRIGGER", configToken)) == FALSE)
     {
       Log ("adminalert: ERROR: Could not read SCAN_TRIGGER option from config file. Disabling SCAN DETECTION TRIGGER");
-      gblConfigTriggerCount = 0;
+      gblConfig.gblTriggerCount = 0;
     }
   else
     {
@@ -185,14 +169,14 @@ InitConfig (void)
       Log ("debug: InitConfig: retrieved SCAN_TRIGGER option: %s \n",
 	   configToken);
 #endif
-      gblConfigTriggerCount = atoi (configToken);
+      gblConfig.gblTriggerCount = atoi (configToken);
     }
 
-  if ((ConfigTokenRetrieve ("KILL_ROUTE", gblKillRoute)) == TRUE)
+  if ((ConfigTokenRetrieve ("KILL_ROUTE", gblConfig.gblKillRoute)) == TRUE)
     {
 #ifdef DEBUG
       Log ("debug: InitConfig: retrieved KILL_ROUTE option: %s \n",
-	   gblKillRoute);
+	   gblConfig.gblKillRoute);
 #endif
     }
   else
@@ -202,11 +186,11 @@ InitConfig (void)
 #endif
     }
 
-  if ((ConfigTokenRetrieve ("KILL_HOSTS_DENY", gblKillHostsDeny)) == TRUE)
+  if ((ConfigTokenRetrieve ("KILL_HOSTS_DENY", gblConfig.gblKillHostsDeny)) == TRUE)
     {
 #ifdef DEBUG
       Log ("debug: InitConfig: retrieved KILL_HOSTS_DENY option: %s \n",
-	   gblKillHostsDeny);
+	   gblConfig.gblKillHostsDeny);
 #endif
     }
   else
@@ -216,15 +200,15 @@ InitConfig (void)
 #endif
     }
 
-  if ((ConfigTokenRetrieve ("KILL_RUN_CMD", gblKillRunCmd)) == TRUE)
+  if ((ConfigTokenRetrieve ("KILL_RUN_CMD", gblConfig.gblKillRunCmd)) == TRUE)
     {
 #ifdef DEBUG
       Log ("debug: InitConfig: retrieved KILL_RUN_CMD option: %s \n",
-	   gblKillRunCmd);
+	   gblConfig.gblKillRunCmd);
 #endif
 	/* Check the order we should run the KILL_RUN_CMD */
 	/* Default is to run the command after blocking */
-	gblRunCmdFirst = CheckFlag ("KILL_RUN_CMD_FIRST");
+	gblFlags.gblRunCmdFirst = CheckFlag ("KILL_RUN_CMD_FIRST");
     }
   else
     {
@@ -233,66 +217,81 @@ InitConfig (void)
 #endif
     }
 
-  if ((ConfigTokenRetrieve ("BLOCKED_FILE", gblBlockedFile)) == TRUE)
+  if ((ConfigTokenRetrieve ("BLOCKED_FILE", gblConfig.gblBlockedFile)) == TRUE)
     {
-      if (strlen (gblBlockedFile) < MAXBUF - 5)
-	{
-	  strncat (gblBlockedFile, ".", 1);
-	  strncat (gblBlockedFile, gblDetectionType, 4);
-	}
-      else
-	{
-	  Log ("adminalert: ERROR: Blocked filename is too long to append detection type file extension: %s.\n",
-	     gblBlockedFile);
-	  return (FALSE);
-	}
 #ifdef DEBUG
       Log ("debug: InitConfig: retrieved BLOCKED_FILE option: %s \n",
-	   gblBlockedFile);
+	   gblConfig.gblBlockedFile);
       Log ("debug: CheckConfig: Removing old block file: %s \n",
-	   gblBlockedFile);
+	   gblConfig.gblBlockedFile);
 #endif
 
-      if ((input = fopen (gblBlockedFile, "w")) == NULL)
-	{
-	  Log
-	    ("adminalert: ERROR: Cannot delete blocked file on startup: %s.\n",
-	     gblBlockedFile);
-	  return (FALSE);
-	}
-      else
-	fclose (input);
-    }
+ 		if ((input = fopen (gblConfig.gblBlockedFile, "w")) == NULL)
+			{
+	  	Log ("adminalert: ERROR: Cannot delete blocked file on startup: %s.\n",
+	     gblConfig.gblBlockedFile);
+	  	return (FALSE);
+			}
+		else
+			fclose(input);
+   }
   else
     {
-      Log ("InitConfig: Cannot retrieve BLOCKED_FILE option! Aborting\n");
+      Log ("adminalert: ERROR: Cannot retrieve BLOCKED_FILE option! Aborting\n");
       return (FALSE);
     }
 
 
-  if ((ConfigTokenRetrieve ("HISTORY_FILE", gblHistoryFile)) == TRUE)
+  if ((ConfigTokenRetrieve ("HISTORY_FILE", gblConfig.gblHistoryFile)) == TRUE)
     {
 #ifdef DEBUG
       Log ("debug: InitConfig: retrieved HISTORY_FILE option: %s \n",
-	   gblHistoryFile);
+	   gblConfig.gblHistoryFile);
 #endif
     }
   else
     {
-      Log ("InitConfig: Cannot retrieve HISTORY_FILE option! Aborting\n");
+      Log ("adminalert: ERROR: Cannot retrieve HISTORY_FILE option! Aborting\n");
       return (FALSE);
     }
 
-  if ((ConfigTokenRetrieve ("IGNORE_FILE", gblIgnoreFile)) == TRUE)
+
+  if ((ConfigTokenRetrieve ("IGNORE_FILE", gblConfig.gblIgnoreFile)) == TRUE)
     {
 #ifdef DEBUG
       Log ("debug: InitConfig: retrieved IGNORE_FILE option: %s \n",
-	   gblIgnoreFile);
+	   gblConfig.gblIgnoreFile);
 #endif
     }
   else
     {
-      Log ("InitConfig: Cannot retrieve IGNORE_FILE option! Aborting\n");
+      Log ("adminalert: ERROR: Cannot retrieve IGNORE_FILE option! Aborting\n");
+      return (FALSE);
+    }
+
+  if ((ConfigTokenRetrieve ("INTERFACE", gblConfig.gblInterface)) == TRUE)
+    {
+#ifdef DEBUG
+      Log ("debug: InitConfig: retrieved INTERFACE option: %s \n",
+	   gblConfig.gblInterface);
+#endif
+    }
+  else
+    {
+      Log ("adminalert: ERROR: Cannot retrieve INTERFACE option! Aborting\n");
+      return (FALSE);
+    }
+
+  if ((ConfigTokenRetrieve ("INTERFACE_ADDRESS", gblConfig.gblInterfaceAddr)) == TRUE)
+    {
+#ifdef DEBUG
+      Log ("debug: InitConfig: retrieved INTERFACE_ADDRESS option: %s \n",
+	   gblConfig.gblInterface);
+#endif
+    }
+  else
+    {
+      Log ("adminalert: ERROR: Cannot retrieve INTERFACE_ADDRESS option! Aborting\n");
       return (FALSE);
     }
 
@@ -300,1301 +299,557 @@ InitConfig (void)
 }
 
 
-#ifdef SUPPORT_STEALTH
-
-/* Read in a TCP packet taking into account IP options and other */
-/* errors */
-int
-PacketReadTCP (int socket, struct iphdr *ipPtr, struct tcphdr *tcpPtr)
+/* Initialize statistic counters */
+int InitStats(void)
 {
-  char packetBuffer[TCPPACKETLEN];
-  struct in_addr addr;
+	gblStats.gblFrameCount=0;
+	gblStats.gblIPPackCount=0;
+	gblStats.gblIcmpPackCount=0;
+	gblStats.gblTcpPackCount=0;
+	gblStats.gblUdpPackCount=0;
 
-  bzero (ipPtr, sizeof (struct iphdr));
-  bzero (tcpPtr, sizeof (struct tcphdr));
-
-  if(read (socket, packetBuffer, TCPPACKETLEN) == ERROR)
-    return(ERROR);
-
-  memcpy (ipPtr, (struct iphdr *) packetBuffer, sizeof (struct iphdr));
-
-  if ((ipPtr->ihl < 5) || (ipPtr->ihl > 15))
-    {
-      addr.s_addr = (u_int) ipPtr->saddr;
-      Log ("attackalert: Illegal IP header length detected in TCP packet: %d from (possible) host: %s\n",
-	 ipPtr->ihl, inet_ntoa (addr));
-      return (FALSE);
-    }
-  else
-    {
-      memcpy (tcpPtr, (struct tcphdr *) (packetBuffer + ((ipPtr->ihl) * 4)),
-	      sizeof (struct tcphdr));
-      return (TRUE);
-    }
-
+return(TRUE);
 }
 
-/* Read in a UDP packet taking into account IP options and other */
-/* errors */
-int
-PacketReadUDP (int socket, struct iphdr *ipPtr, struct udphdr *udpPtr)
+
+/* Initialize the interface */
+int InitInterface(char *interface)
 {
-  char packetBuffer[UDPPACKETLEN];
-  struct in_addr addr;
 
-  bzero (ipPtr, sizeof (struct iphdr));
-  bzero (udpPtr, sizeof (struct udphdr));
+char *interfacePtr;
+char pcapError[PCAP_ERRBUF_SIZE];
+/* XXX lookupnet vars
+struct in_addr addr;
+char *addressPtr, *netmaskPtr;
+*/
 
-  if(read (socket, packetBuffer, UDPPACKETLEN) == ERROR)
-    return(ERROR);
+/* Initialize Interface */
+if(strcmp(interface,"auto") == 0)
+	interfacePtr = pcap_lookupdev(pcapError);
+else
+	interfacePtr = interface;
 
-  memcpy (ipPtr, (struct iphdr *) packetBuffer, sizeof (struct iphdr));
-
-  if ((ipPtr->ihl < 5) || (ipPtr->ihl > 15))
-    {
-      addr.s_addr = (u_int) ipPtr->saddr;
-      Log ("attackalert: Illegal IP header length detected in UDP packet: %d from (possible) host: %s\n",
-	 ipPtr->ihl, inet_ntoa (addr));
-      return (FALSE);
-    }
-  else
-    {
-      memcpy (udpPtr, (struct udphdr *) (packetBuffer + ((ipPtr->ihl) * 4)),
-	      sizeof (struct udphdr));
-      return (TRUE);
-    }
-
+if(interfacePtr == NULL)
+{
+	Log("adminalert: ERROR: Error looking up interface: %s\n", pcapError);
+	return(ERROR);
 }
 
-/****************************************************************/
-/* Stealth scan detection Mode One                              */
-/*                                                              */
-/* This mode will read in a list of ports to monitor and will   */
-/* then open a raw socket to look for packets matching the port. */
-/*                                                              */
-/****************************************************************/
-int
-PortSentryStealthModeTCP (void)
+#ifdef DEBUG
+      Log ("debug: InitInterface: Opening interface: %s \n",interfacePtr);
+#endif
+
+/* Initialize address/netmask */
+if(pcap_lookupnet(interfacePtr, &gblAddressPcapPtr, &gblNetmaskPcapPtr, pcapError) == ERROR)
 {
-  struct sockaddr_in client, server;
-  int portCount = 0, portCount2 = 0, ports[MAXSOCKS], ports2[MAXSOCKS];
-  int count = 0, scanDetectTrigger = TRUE, gotBound = FALSE, result = TRUE;
-  int openSockfd = 0, incomingPort = 0;
-  char *temp, target[IPMAXBUF], configToken[MAXBUF];
-  char resolvedHost[DNSMAXBUF], *packetType;
-  struct in_addr addr;
-  struct iphdr ip;
-  struct tcphdr tcp;
+	Log("adminalert: ERROR: Error looking up network: %s\n", pcapError);
+	return(ERROR);
+}
 
-  if ((ConfigTokenRetrieve ("TCP_PORTS", configToken)) == FALSE)
-    {
-      Log ("adminalert: ERROR: Could not read TCP_PORTS option from config file");
-      return (ERROR);
-    }
+/* XXX Broken. Can't determine Interface IP */
+/*addr.s_addr = gblAddressPcapPtr;
+addressPtr = (char *)inet_ntoa(addr);
+addr.s_addr = gblNetmaskPcapPtr;
+netmaskPtr = (char *)inet_ntoa(addr);
 
-  /* break out the ports */
-  if ((temp = (char *) strtok (configToken, ",")) != NULL)
-    {
-      ports[0] = atoi (temp);
-      for (count = 1; count < MAXSOCKS; count++)
-	{
-	  if ((temp = (char *) strtok (NULL, ",")) != NULL)
-	    ports[count] = atoi (temp);
-	  else
-	    break;
-	}
-      portCount = count;
-    }
-  else
-    {
-      Log ("adminalert: ERROR: No TCP ports supplied in config file. Aborting");
-      return (ERROR);
-    }
-
-  /* ok, now check if they have a network daemon on the socket already, if they do */
-  /* then skip that port because it will cause false alarms */
-  for (count = 0; count < portCount; count++)
-    {
-      Log ("adminalert: Going into stealth listen mode on TCP port: %d\n",
-	   ports[count]);
-      if ((openSockfd = OpenTCPSocket ()) == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not open TCP socket. Aborting.\n");
-	  return (ERROR);
-	}
-
-      if (BindSocket (openSockfd, client, server, ports[count]) == ERROR)
-	Log ("adminalert: ERROR: Socket %d is in use and will not be monitored. Attempting to continue\n",
-	   ports[count]);
-      else /* well we at least bound to one socket so we'll continue */
-	{
-	  gotBound = TRUE;
-	  ports2[portCount2++] = ports[count];
-	}
-      close (openSockfd);
-    }
-
-  /* if we didn't bind to anything then abort */
-  if (gotBound == FALSE)
-    {
-      Log ("adminalert: ERROR: All supplied TCP sockets are in use and will not be listened to. Shutting down.\n");
-      return (ERROR);
-    }
-
-  /* Open our raw socket for network IO */
-  if ((openSockfd = OpenRAWTCPSocket ()) == ERROR)
-    {
-      Log ("adminalert: ERROR: could not open RAW TCP socket. Aborting.\n");
-      return (ERROR);
-    }
-
-  Log ("adminalert: PortSentry is now active and listening.\n");
-
-  /* main detection loop */
-  for (;;)
-    {
-      if (PacketReadTCP (openSockfd, &ip, &tcp) != TRUE)
-	continue;
-      
-
-      incomingPort = ntohs (tcp.dest);
-
-      /* check for an ACK/RST to weed out established connections in case the user */
-      /* is monitoring high ephemeral port numbers */
-      if ((tcp.ack != 1) && (tcp.rst != 1))
-	{
-	  /* this iterates the list of ports looking for a match */
-	  for (count = 0; count < portCount; count++)
-	    {
-	      if (incomingPort == ports2[count])
-		{
-		  if (SmartVerifyTCP (client, server, incomingPort) == TRUE)
-		    break;
-
-		  /* copy the clients address into our buffer for nuking */
-		  addr.s_addr = (u_int) ip.saddr;
-		  SafeStrncpy (target, (char *) inet_ntoa (addr), IPMAXBUF);
-		  /* check if we should ignore this IP */
-		  result = NeverBlock (target, gblIgnoreFile);
-
-		  if (result == ERROR)
-		    {
-		      Log ("attackalert: ERROR: cannot open ignore file. Blocking host anyway.\n");
-		      result = FALSE;
-		    }
-
-		  if (result == FALSE)
-		    {
-		      /* check if they've visited before */
-		      scanDetectTrigger = CheckStateEngine (target);
-		      if (scanDetectTrigger == TRUE)
-			{
-			if (gblResolveHost) /* Do they want DNS resolution? */
-			{
-				if(CleanAndResolve(resolvedHost, target) != TRUE)
-				{
-		      			Log ("attackalert: ERROR: Error resolving host. \
-					      resolving disabled for this host.\n");
-					snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-				}			
-			}
-			else
-			{
-				snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-			}
-
-			  packetType = ReportPacketType (tcp);
-			  Log ("attackalert: %s from host: %s/%s to TCP port: %d",
-			     packetType, resolvedHost, target,
-			     ports2[count]);
-			  /* Report on options present */
-			  if (ip.ihl > 5)
-			    Log ("attackalert: Packet from host: %s/%s to TCP port: %d has IP options set (detection avoidance technique).",
-			       resolvedHost, target, ports2[count]);
-
-			  /* check if this target is already blocked */
-			  if (IsBlocked (target, gblBlockedFile) == FALSE)
-			    {
-			      /* toast the prick */
-			      if (DisposeTCP (target, ports2[count]) != TRUE)
-				Log ("attackalert: ERROR: Could not block host %s/%s !!",
-				   resolvedHost, target);
-			      else
-				WriteBlocked (target, resolvedHost,
-					      ports2[count], gblBlockedFile,
-					      gblHistoryFile, "TCP");
-			    }	/* end IsBlocked check */
-			  else
-			    Log ("attackalert: Host: %s/%s is already blocked Ignoring",
-			       resolvedHost, target);
-			}	/* end if(scanDetectTrigger) */
-		    }		/* end if(never block) check */
-		  break;	/* get out of for(count) loop above */
-		}		/* end if(incoming port) ==  protected port */
-	    }			/* end for( check for protected port loop ) loop */
-	}			/* end if(TH_ACK) check */
-    }				/* end for( ; ; ) loop */
-
-}				/* end PortSentryStealthModeTCP */
-
-
-/****************************************************************/
-/* Advanced Stealth scan detection Mode One                     */
-/*                                                              */
-/* This mode will see what ports are listening below 1024       */
-/* and will then monitor all the rest. This is very sensitive   */
-/* and will react on any packet hitting any monitored port,     */
-/* regardless of TCP flags set                                  */
-/*                                                              */
-/****************************************************************/
-int
-PortSentryAdvancedStealthModeTCP (void)
+if(addressPtr == NULL)
 {
-  struct sockaddr_in client, server;
-  int result = TRUE, scanDetectTrigger = TRUE, hotPort = TRUE;
-  int openSockfd = 0, incomingPort = 0, smartVerify = FALSE;
-  unsigned int advancedPorts = 1024;
-  unsigned int count = 0, inUsePorts[MAXSOCKS], portCount = 0;
-  char target[IPMAXBUF], configToken[MAXBUF];
-  char resolvedHost[DNSMAXBUF], *temp, *packetType;
-  struct in_addr addr;
-  struct iphdr ip;
-  struct tcphdr tcp;
+	Log("adminalert: ERROR: Can't translate network address for parsing.\n");
+	return(ERROR);
+}
+*/
 
-  if ((ConfigTokenRetrieve ("ADVANCED_PORTS_TCP", configToken)) == FALSE)
-    {
-      Log ("adminalert: ERROR: Could not read ADVANCED_PORTS_TCP option from config file. Assuming 1024.");
-      advancedPorts = 1024;
-    }
-  else
-    advancedPorts = atoi (configToken);
+Log("adminalert: Monitoring interface %s and address: %s\n", interfacePtr, gblConfig.gblInterfaceAddr);
 
-  Log ("adminalert: Advanced mode will monitor first %d ports",
-       advancedPorts);
+/* Open device */
+if((gblHandlePtr = pcap_open_live(interfacePtr, MAXBUF, 0, 0, pcapError)) == NULL)
+{
+	Log("adminalert: ERROR: Can't open device %s for monitoring: %s\n", interfacePtr, pcapError);
+	return(ERROR);
+}
 
-  /* try to bind to all ports below 1024, any that are taken we exclude later */
-  for (count = 0; count < advancedPorts; count++)
-    {
-      if ((openSockfd = OpenTCPSocket ()) == ERROR)
+#ifdef DEBUG
+      Log ("debug: InitInterface: Interface %s is now live. \n",interfacePtr);
+#endif
+
+
+/* Check media type function here */
+gblDataLink = pcap_datalink(gblHandlePtr);
+switch(gblDataLink)
 	{
-	  Log ("adminalert: ERROR: could not open TCP socket. Aborting.\n");
-	  return (ERROR);
-	}
-      if (BindSocket (openSockfd, client, server, count) == ERROR)
-	inUsePorts[portCount++] = count;
-
-      close (openSockfd);
-    }
-
-  if ((ConfigTokenRetrieve ("ADVANCED_EXCLUDE_TCP", configToken)) != FALSE)
-    {
-      /* break out the ports */
-      if ((temp = (char *) strtok (configToken, ",")) != NULL)
-	{
-	  inUsePorts[portCount++] = atoi (temp);
-	  Log ("adminalert: Advanced mode will manually exclude port: %d ",
-	       inUsePorts[portCount - 1]);
-	  for (count = 0; count < MAXSOCKS; count++)
-	    {
-	      if ((temp = (char *) strtok (NULL, ",")) != NULL)
-		{
-		  inUsePorts[portCount++] = atoi (temp);
-		  Log ("adminalert: Advanced mode will manually exclude port: %d ",
-		     inUsePorts[portCount - 1]);
-		}
-	      else
+	case DLT_EN10MB:
+		gblLinkSize = LINK_ETHERSIZE;
 		break;
-	    }
+	default:
+		Log("adminalert: ERROR: Datalink type is not supported yet.");
+		return(ERROR);
 	}
-    }
-  else
-    Log ("adminalert: Advanced mode will manually exclude no ports");
+
+return(TRUE);
+}
 
 
-  for (count = 0; count < portCount; count++)
-    Log ("adminalert: Advanced Stealth scan detection mode activated. Ignored TCP port: %d\n",
-       inUsePorts[count]);
 
-  /* open raw socket for reading */
-  if ((openSockfd = OpenRAWTCPSocket ()) == ERROR)
+/* Initialize BPF */
+int InitFilter(void)
+{
+char tcpPorts[MAXBUF], udpPorts[MAXBUF], filterString[MAXBUF * 2], finalFilter[MAXBUF * 2];
+struct bpf_program BPF;
+
+
+Log ("adminalert: Initializing PortSentry BPF filters.\n");
+
+/* XXX */
+/* Need to do:
+ Bypass ports in use already
+ Add unused ports to list  with 'or' separator
+ add ICMP
+ put in the config retrieve in the main init function.
+*/
+
+ if ((ConfigTokenRetrieve ("TCP_PORTS", tcpPorts)) == FALSE)
+      Log ("adminalert: No TCP_PORTS defined in config file. Continuing.");
+ else
+      Log ("adminalert: Monitoring TCP ports: %s\n", tcpPorts);
+
+ if ((ConfigTokenRetrieve ("UDP_PORTS", udpPorts)) == FALSE)
+      Log ("adminalert: No UDP_PORTS defined in config file. Continuing.");
+ else
+      Log ("adminalert: Monitoring UDP ports: %s\n", udpPorts);
+
+
+ if ((strlen(tcpPorts) == 0) && (strlen(udpPorts) == 0))
     {
-      Log ("adminalert: ERROR: could not open RAW TCP socket. Aborting.\n");
-      return (ERROR);
+      Log("adminalert: No TCP or UDP ports defined in config file. Aborting.");
+      return(ERROR);
+    }
+ else
+    {
+	SafeStrncpy(finalFilter, "not src host ", 14);
+	strncat(finalFilter, gblConfig.gblInterfaceAddr, IPMAXBUF);
+	if(strlen(tcpPorts) != 0)
+	   {
+		strncat(finalFilter, " and tcp dst port ", MAXBUF);
+		SubstString(" or ", ",", tcpPorts, filterString);
+		strncat(finalFilter, filterString, ((MAXBUF * 2)- strlen(finalFilter)));
+	   }
+	if(strlen(udpPorts) != 0)
+	   {
+		/* Straigtens out filter ordering here */
+		if(strlen(tcpPorts) != 0)
+			strncat(finalFilter, " or udp dst port ", ((MAXBUF * 2) - strlen(finalFilter)));
+		else
+			strncat(finalFilter, " and udp dst port ", ((MAXBUF * 2) - strlen(finalFilter)));
+
+		SubstString(" or ", ",", udpPorts, filterString);
+		strncat(finalFilter, filterString, ((MAXBUF * 2) - strlen(finalFilter)));
+	   }
     }
 
-  Log ("adminalert: PortSentry is now active and listening.\n");
 
-  /* main detection loop */
-  for (;;)
-    {
-      if (PacketReadTCP (openSockfd, &ip, &tcp) != TRUE)
-	continue;
+#ifdef DEBUG
+      Log ("debug: InitFilter: Applying filter: \"%s\" \n", finalFilter);
+#endif
 
-      incomingPort = ntohs (tcp.dest);
-
-      /* don't monitor packets with ACK set (established) or RST */
-      /* This could be a hole in some cases */
-      if ((tcp.ack != 1) && (tcp.rst != 1))
+/* Set Filters function here */
+if (pcap_compile(gblHandlePtr, &BPF, finalFilter, 0, gblNetmaskPcapPtr) == -1)
 	{
-	  /* check if we should ignore this connection to this port */
-	  for (count = 0; count < portCount; count++)
-	    {
-	      if ((incomingPort == inUsePorts[count])
-		  || (incomingPort >= advancedPorts))
-		{
-		  hotPort = FALSE;
-		  break;
-		}
-	      else
-		hotPort = TRUE;
-	    }
+      		Log ("adminalert: ERROR: Could not apply BPF filter: %s", pcap_geterr(gblHandlePtr));
+   		return(ERROR);
+	}
+else if(pcap_setfilter(gblHandlePtr, &BPF) == -1)
+	{
+      Log ("adminalert: ERROR: Could not apply BPF filter: %s", pcap_geterr(gblHandlePtr));
+   		return(ERROR);
+	}
 
-	  if (hotPort)
-	    {
-	      smartVerify = SmartVerifyTCP (client, server, incomingPort);
 
-	      if (smartVerify != TRUE)
-		{
-		  addr.s_addr = (u_int) ip.saddr;
-		  SafeStrncpy (target, (char *) inet_ntoa (addr), IPMAXBUF);
-		  /* check if we should ignore this IP */
-		  result = NeverBlock (target, gblIgnoreFile);
+#ifdef DEBUG
+      Log ("debug: InitFilter: Filter set.\n", finalFilter);
+#endif
 
-		  if (result == ERROR)
-		    {
-		      Log ("attackalert: ERROR: cannot open ignore file. Blocking host anyway.\n");
-		      result = FALSE;
-		    }
+return(TRUE);
+}
 
-		  if (result == FALSE)
-		    {
-		      /* check if they've visited before */
-		      scanDetectTrigger = CheckStateEngine (target);
 
-			if (scanDetectTrigger == TRUE)
-			{
-				if (gblResolveHost) /* Do they want DNS resolution? */
+void PktEngine(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
+{
+
+const struct ether_header *ethernet;
+const struct ip *ip;
+const struct tcphdr *tcp;
+const struct udphdr *udp;
+const struct icmp *icmp;
+int dataoffset = 0;
+int result = FALSE;
+
+
+gblStats.gblFrameCount++;
+
+#ifdef DEBUG
+      Log ("debug: PktEngine: Frame counter: %d\n",gblStats.gblFrameCount);
+      Log ("debug: PktEngine: IP counter: %d\n",gblStats.gblIPPackCount);
+      Log ("debug: PktEngine: TCP counter: %d\n",gblStats.gblTcpPackCount);
+      Log ("debug: PktEngine: UDP counter: %d\n",gblStats.gblUdpPackCount);
+      Log ("debug: PktEngine: ICMP counter: %d\n",gblStats.gblIcmpPackCount);
+#endif
+
+/* shuts up compiler about uninitialized ip struct warning in switch() */
+ip = NULL;
+
+
+/* XXX Re-evaluate this switch statement if you apply BPF first */
+/* the ethertype check is probably not necessary with ip,tcp,udp,icmp options with BPF */
+switch(gblDataLink)
+	{
+		case DLT_EN10MB:
+			ethernet = (struct ether_header *) (packet);
+			if (ntohs(ethernet -> ether_type) == ETHERTYPE_IP)
 				{
-					if(CleanAndResolve(resolvedHost, target) != TRUE)
-					{
-		      				Log ("attackalert: ERROR: Error resolving host. \
-					      	resolving disabled for this host.\n");
-						snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-					}			
+#ifdef DEBUG
+      Log ("debug: PktEngine: Found ETHERTYPE_IP\n");
+#endif
+					gblStats.gblIPPackCount++;
+					ip = (struct ip *) (packet + gblLinkSize);
+					gblSrc.s_addr = ip->ip_src.s_addr;
+					gblDst.s_addr = ip->ip_dst.s_addr;
+					if((dataoffset = CheckIP(ip)))
+						{
+							SafeStrncpy (gblAttackerIP, (char *) inet_ntoa (gblSrc), IPMAXBUF);
+							SafeStrncpy (gblTargetIP, (char *) inet_ntoa (gblDst), IPMAXBUF);
+							break;
+						}
+					else
+						{
+							Log("attackalert: An illegal IP packet type was detected and discarded.\n");
+							break;
+						}
+
 				}
-				else
+			/* Found other ETHERTYPE (probably an ARP) */
+			else
+			  	break;
+	}
+
+if(dataoffset)
+	{
+	  /* check if we should ignore this IP */
+	/* XXX This should read in at Init and placed into a list */
+	  result = NeverBlock (gblAttackerIP, gblConfig.gblIgnoreFile);
+		if (result == ERROR)
+		 		Log ("attackalert: ERROR: cannot open ignore file. Analyzing attack anyway.\n");
+		else if(result == TRUE) /* Ignore this IP */
+			return;
+
+	/* check if this target is already blocked */
+	if (IsBlocked (gblAttackerIP, gblConfig.gblBlockedFile) == TRUE)
+		{
+			Log ("attackalert: Host: %s is already blocked - Ignoring", gblAttackerIP);
+			return;
+		}
+
+	/* check if they've visited before */
+	if (!CheckStateEngine (gblAttackerIP))
+		return;
+
+	switch(ip->ip_p)
+		{
+			case IPPROTO_TCP:
+				tcp = (struct tcphdr *) (packet + gblLinkSize + dataoffset);
+				gblStats.gblTcpPackCount++;
+				if (!CheckTCP(ip, tcp))
+					Log("adminalert: ERROR: Error checking TCP packet.\n");
+				break;
+			case IPPROTO_UDP:
+				gblStats.gblUdpPackCount++;
+				udp = (struct udphdr *) (packet + gblLinkSize + dataoffset);
+				if (!CheckUDP(ip, udp))
+					Log("adminalert: ERROR: Error checking UDP packet.\n");
+				break;
+			case IPPROTO_ICMP:
+				gblStats.gblIcmpPackCount++;
+				icmp = (struct icmp *) (packet + gblLinkSize + dataoffset);
+				if (!CheckICMP(ip, icmp))
+					Log("adminalert: ERROR: Error checking ICMP packet.\n");
+				break;
+		}
+	}
+
+}
+
+int CheckTCP(const struct ip *ip, const struct tcphdr *tcp)
+{
+char resolvedHost[DNSMAXBUF];
+char *scanType;
+int dstPort = 0, srcPort = 0;
+
+
+/* Set destination/src port  */
+dstPort = ntohs(tcp->th_dport);
+srcPort = ntohs(tcp->th_sport);
+
+if(SmartVerify(dstPort, "TCP") == TRUE)
+	{
+#ifdef DEBUG
+		Log("debug: CheckTCP: SmartVerify indicates port is in use. Ignoring connection\n");
+#endif DEBUG
+		return(TRUE);
+	}
+
+	/* By-Bye */
+if (Dispose(gblAttackerIP, dstPort, "TCP") != TRUE)
+	Log ("attackalert: ERROR: Could not block host %s!", gblAttackerIP);
+
+/* Ok we've already blocked this guy or ignored the actions */
+/* Since those are the time critical areas we'll now do the optional */
+/* resolution for logging */
+if (gblFlags.gblResolveHost)
+	{
+		if(CleanAndResolve(resolvedHost, gblAttackerIP) != TRUE)
+			{
+				Log ("attackalert: ERROR: Error resolving host. \
+			      	resolving disabled for this host.\n");
+				snprintf (resolvedHost, DNSMAXBUF, "%s", gblAttackerIP);
+			}
+	}
+else
+	snprintf (resolvedHost, DNSMAXBUF, "%s", gblAttackerIP);
+
+/* XXX Put in flags to null out for unused bit attack vulnerability or simply report?? */
+/* Also this false alarms with Explicit Congestion Notification aware kernels */
+/*
+if (tcp->th_flags & (TCP_UNUSED1|TCP_UNUSED2))
+	Log("attackalert: TCP Unused bits set. Detection evasion technique in use!\n");
+*/
+
+if(tcp->th_flags == 0)
+	{
+		Log("attackalert: TCP NULL scan from host %s/%s to TCP port: %d from TCP port: %d", resolvedHost, \
+				gblAttackerIP, dstPort, srcPort);
+		scanType="NULL";
+	}
+else if (tcp->th_flags == (TH_FIN|TH_URG|TH_PUSH|TH_ACK|TH_SYN|TH_RST))
+	{
+		Log("attackalert: TCP XMAS-FULL scan from host %s/%s to TCP port: %d from TCP port: %d", resolvedHost, \
+				gblAttackerIP, dstPort, srcPort);
+		scanType="XMAS-FULL";
+	}
+else if (tcp->th_flags == (TH_FIN|TH_URG|TH_PUSH))
+	{
+		Log("attackalert: TCP XMAS scan from host %s/%s to TCP port: %d from TCP port: %d", resolvedHost, \
+				gblAttackerIP, dstPort, srcPort);
+		scanType="XMAS";
+	}
+else if (tcp->th_flags == TH_SYN)
+	{
+		Log("attackalert: TCP SYN scan from host %s/%s to TCP port: %d from TCP port: %d", resolvedHost, \
+				gblAttackerIP, dstPort, srcPort);
+		scanType="SYN";
+	}
+else if (tcp->th_flags == TH_FIN)
+	{
+		Log("attackalert: TCP FIN scan from host %s/%s to TCP port: %d from TCP port: %d", resolvedHost, \
+				gblAttackerIP, dstPort, srcPort);
+		scanType="FIN";
+	}
+else
+	{
+	Log("attackalert: Unknown/Illegal scan type: TCP Packet Flags: FIN %d SYN: %d RST: %d PUSH: %d ACK: %d URG: %d \
+UNUSED1: %d UNUSED2: %d scan from host %s/%s to TCP port: %d from TCP port: %d", \
+  ((tcp->th_flags & TH_FIN) >> 0), \
+	((tcp->th_flags & TH_SYN) >> 1), \
+  ((tcp->th_flags & TH_RST) >> 2), \
+  ((tcp->th_flags & TH_PUSH) >> 3), \
+  ((tcp->th_flags & TH_ACK) >> 4), \
+  ((tcp->th_flags & TH_URG) >> 5), \
+  ((tcp->th_flags & TCP_UNUSED1) >> 6), \
+  ((tcp->th_flags & TCP_UNUSED2) >> 7), \
+	resolvedHost, gblAttackerIP, dstPort, srcPort);
+	scanType="UNKNOWN";
+	}
+
+if (WriteBlocked (gblAttackerIP, resolvedHost, "TCP", scanType, dstPort, srcPort, \
+		gblConfig.gblBlockedFile, gblConfig.gblHistoryFile) != TRUE)
+			Log("attackalert: ERROR: Could not write out to history/blocked file.");
+
+
+#ifdef DEBUG
+	Log("debug: CheckTCP: src: %s\n", gblAttackerIP);
+	Log("debug: CheckTCP: dst: %s\n", gblTargetIP);
+	Log("debug: CheckTCP: src port: %d\n", ntohs(tcp->th_sport));
+	Log("debug: CheckTCP: dst port: %d\n", ntohs(tcp->th_dport));
+	Log("debug: CheckTCP: FIN: %d\n", (tcp->th_flags & TH_FIN) >> 0);
+	Log("debug: CheckTCP: SYN: %d\n", (tcp->th_flags & TH_SYN) >> 1);
+	Log("debug: CheckTCP: RST: %d\n", (tcp->th_flags & TH_RST) >> 2);
+	Log("debug: CheckTCP: PSH: %d\n", (tcp->th_flags & TH_PUSH) >> 3);
+	Log("debug: CheckTCP: ACK: %d\n", (tcp->th_flags & TH_ACK) >> 4);
+	Log("debug: CheckTCP: URG: %d\n", (tcp->th_flags & TH_URG) >> 5);
+	Log("debug: CheckTCP: UNUSED1: %d\n", (tcp->th_flags & TCP_UNUSED1) >> 6);
+	Log("debug: CheckTCP: UNUSED2: %d\n", (tcp->th_flags & TCP_UNUSED2) >> 7);
+	Log("debug: CheckTCP: total flags: %d\n", tcp->th_flags);
+#endif
+
+return(TRUE);
+}
+
+
+int CheckUDP(const struct ip *ip, const struct udphdr *udp)
+{
+char resolvedHost[DNSMAXBUF];
+int dstPort = 0, srcPort = 0;
+
+
+/* Set destination/src port  */
+dstPort = ntohs(udp->uh_dport);
+srcPort = ntohs(udp->uh_sport);
+
+if((SmartVerify(dstPort, "UDP")) == TRUE)
+	{
+#ifdef DEBUG
+		Log("debug: CheckUDP: SmartVerify indicates port is in use. Ignoring connection\n");
+#endif DEBUG
+		return(TRUE);
+	}
+
+	/* By-Bye */
+if (Dispose(gblAttackerIP, dstPort, "UDP") != TRUE)
+	Log ("attackalert: ERROR: Could not block host %s!", gblAttackerIP);
+
+/* Ok we've already blocked this guy or ignored the actions */
+/* Since those are the time critical areas we'll now do the optional */
+/* resolution for logging */
+if (gblFlags.gblResolveHost)
+	{
+		if(CleanAndResolve(resolvedHost, gblAttackerIP) != TRUE)
+			{
+				Log ("attackalert: ERROR: Error resolving host. \
+			      	resolving disabled for this host.\n");
+				snprintf (resolvedHost, DNSMAXBUF, "%s", gblAttackerIP);
+			}
+	}
+else
+	snprintf (resolvedHost, DNSMAXBUF, "%s", gblAttackerIP);
+
+Log("attackalert: UDP scan from host %s/%s to UDP port: %d from UDP port: %d", resolvedHost, \
+gblAttackerIP, dstPort, srcPort);
+if (WriteBlocked (gblAttackerIP, resolvedHost, "UDP", "UDP", dstPort, srcPort, \
+	gblConfig.gblBlockedFile, gblConfig.gblHistoryFile) != TRUE)
+	Log("attackalert: ERROR: Could not write out to history/blocked file.");
+
+#ifdef DEBUG
+	Log("debug: CheckUDP: src: %s\n", gblAttackerIP);
+	Log("debug: CheckUDP: dst: %s\n", gblTargetIP);
+	Log("debug: CheckUDP: src port: %d\n", ntohs(udp->uh_sport));
+	Log("debug: CheckUDP: dst port: %d\n", ntohs(udp->uh_dport));
+#endif
+
+return(TRUE);
+}
+
+
+
+/* XXX Not used yet */
+int CheckICMP(const struct ip *ip, const struct icmp *icmp)
+{
+struct in_addr saddr;
+
+saddr.s_addr = ip->ip_src.s_addr;
+
+	Log("attackalert: ICMP scan from host %s\n", gblAttackerIP);
+	printf("ICMP Scan from host %s\n", gblAttackerIP);
+
+return(TRUE);
+}
+
+
+
+int CheckIP(const struct ip *ip)
+{
+int dataoffset = 0;
+
+	/* This should never be less than 5 */
+	if (ip->ip_hl < 5)
+		{
+			Log ("attackalert: Illegal IP header length detected in IP packet - length: %d from (possible) host: %s\n",
+			ip->ip_hl, inet_ntoa (gblSrc));
+			Log("attackalert: This could be an attempt to bypass detection or attack the system.\n");
+		}
+	else
+		{
+#ifdef DEBUG
+			Log("debug: PktEngine: Found a good IP packet. Type: %d hlen: %d\n", ip->ip_p, ip->ip_hl);
+#endif
+			if((dataoffset = (ip->ip_hl * 4)) > 20)
 				{
-					snprintf (resolvedHost, DNSMAXBUF, "%s", target);
+					Log ("attackalert: An IP packet with options set was found - length: %d from host: %s\n",
+	 				ip->ip_hl, inet_ntoa (gblSrc));
+					Log("attackalert: This could be an attempt to bypass detection or attack the system.\n");
 				}
-
-			  packetType = ReportPacketType (tcp);
-			  Log ("attackalert: %s from host: %s/%s to TCP port: %d",
-			     packetType, resolvedHost, target, incomingPort);
-			  /* Report on options present */
-			  if (ip.ihl > 5)
-			    Log ("attackalert: Packet from host: %s/%s to TCP port: %d has IP options set (detection avoidance technique).",
-			       resolvedHost, target, incomingPort);
-
-			  /* check if this target is already blocked */
-			  if (IsBlocked (target, gblBlockedFile) == FALSE)
-			    {
-			      /* toast the prick */
-			      if (DisposeTCP (target, incomingPort) != TRUE)
-				Log ("attackalert: ERROR: Could not block host %s/%s!!",
-				   resolvedHost, target);
-			      else
-				WriteBlocked (target, resolvedHost,
-					      incomingPort, gblBlockedFile,
-					      gblHistoryFile, "TCP");
-			    }	/* end IsBlocked check */
-			  else
-			    Log ("attackalert: Host: %s/%s is already blocked Ignoring",
-			       resolvedHost, target);
-			}	/* end if(scanDetectTrigger) */
-		    }		/* end if(never block) check */
-		}		/* end if(smartVerify) */
-	    }			/* end if(hotPort) */
-	}			/* end if(TH_ACK) */
-    }				/* end for( ; ; ) loop */
-}
-/* end PortSentryAdvancedStealthModeTCP */
-
-
-
-/****************************************************************/
-/* UDP "stealth" scan detection                                 */
-/*                                                              */
-/* This mode will read in a list of ports to monitor and will   */
-/* then open a raw socket to look for packets matching the port. */
-/*                                                              */
-/****************************************************************/
-int
-PortSentryStealthModeUDP (void)
-{
-  struct sockaddr_in client, server;
-  int portCount = 0, portCount2 = 0, ports[MAXSOCKS], ports2[MAXSOCKS],
-    result = TRUE;
-  int count = 0, scanDetectTrigger = TRUE, gotBound = FALSE;
-  int openSockfd = 0, incomingPort = 0;
-  char *temp, target[IPMAXBUF], configToken[MAXBUF];
-  char resolvedHost[DNSMAXBUF];
-  struct in_addr addr;
-  struct iphdr ip;
-  struct udphdr udp;
-
-
-  if ((ConfigTokenRetrieve ("UDP_PORTS", configToken)) == FALSE)
-    {
-      Log ("adminalert: ERROR: Could not read UDP_PORTS option from config file");
-      return (ERROR);
-    }
-
-  /* break out the ports */
-  if ((temp = (char *) strtok (configToken, ",")) != NULL)
-    {
-      ports[0] = atoi (temp);
-      for (count = 1; count < MAXSOCKS; count++)
-	{
-	  if ((temp = (char *) strtok (NULL, ",")) != NULL)
-	    ports[count] = atoi (temp);
-	  else
-	    break;
-	}
-      portCount = count;
-    }
-  else
-    {
-      Log ("adminalert: ERROR: No UDP ports supplied in config file. Aborting");
-      return (ERROR);
-    }
-
-  /* ok, now check if they have a network daemon on the socket already, if they do */
-  /* then skip that port because it will cause false alarms */
-  for (count = 0; count < portCount; count++)
-    {
-      Log ("adminalert: Going into stealth listen mode on UDP port: %d\n",
-	   ports[count]);
-      if ((openSockfd = OpenUDPSocket ()) == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not open UDP socket. Aborting.\n");
-	  return (ERROR);
-	}
-
-      if (BindSocket (openSockfd, client, server, ports[count]) == ERROR)
-	Log ("adminalert: ERROR: Socket %d is in use and will not be monitored. Attempting to continue\n",
-	   ports[count]);
-      else
-	{
-	  gotBound = TRUE;
-	  ports2[portCount2++] = ports[count];
-	}
-      close (openSockfd);
-    }
-
-  if (gotBound == FALSE)
-    {
-      Log ("adminalert: ERROR: All supplied UDP sockets are in use and will not be listened to. Shutting down.\n");
-      return (ERROR);
-    }
-
-  if ((openSockfd = OpenRAWUDPSocket ()) == ERROR)
-    {
-      Log ("adminalert: ERROR: could not open RAW UDP socket. Aborting.\n");
-      return (ERROR);
-    }
-
-  Log ("adminalert: PortSentry is now active and listening.\n");
-
-  /* main detection loop */
-  for (;;)
-    {
-      if (PacketReadUDP (openSockfd, &ip, &udp) != TRUE)
-	continue;
-
-      incomingPort = ntohs (udp.dest);
-
-      /* this iterates the list of ports looking for a match */
-      for (count = 0; count < portCount; count++)
-	{
-	  if (incomingPort == ports2[count])
-	    {
-	      if (SmartVerifyUDP (client, server, incomingPort) == TRUE)
-		break;
-
-	      addr.s_addr = (u_int) ip.saddr;
-	      SafeStrncpy (target, (char *) inet_ntoa (addr), IPMAXBUF);
-	      /* check if we should ignore this IP */
-	      result = NeverBlock (target, gblIgnoreFile);
-
-	      if (result == ERROR)
-		{
-		  Log ("attackalert: ERROR: cannot open ignore file. Blocking host anyway.\n");
-		  result = FALSE;
 		}
 
-	      if (result == FALSE)
-		{
-		  /* check if they've visited before */
-		  scanDetectTrigger = CheckStateEngine (target);
-		  if (scanDetectTrigger == TRUE)
-		    {
-			if (gblResolveHost) /* Do they want DNS resolution? */
-			{
-				if(CleanAndResolve(resolvedHost, target) != TRUE)
-				{
-		      			Log ("attackalert: ERROR: Error resolving host. \
-					resolving disabled for this host.\n");
-					snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-				}			
-			}
-			else
-			{
-				snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-			}
-
-		      Log ("attackalert: UDP scan from host: %s/%s to UDP port: %d",
-			 resolvedHost, target, ports2[count]);
-		      /* Report on options present */
-		      if (ip.ihl > 5)
-			Log ("attackalert: Packet from host: %s/%s to UDP port: %d has IP options set (detection avoidance technique).",
-			       resolvedHost, target, incomingPort);
-
-		      /* check if this target is already blocked */
-		      if (IsBlocked (target, gblBlockedFile) == FALSE)
-			{
-			  if (DisposeUDP (target, ports2[count]) != TRUE)
-			    Log ("attackalert: ERROR: Could not block host %s/%s!!",
-			       resolvedHost, target);
-			  else
-			    WriteBlocked (target, resolvedHost, ports2[count],
-					  gblBlockedFile, gblHistoryFile, "UDP");
-			}	/* end IsBlocked check */
-		      else
-			{
-			  Log ("attackalert: Host: %s/%s is already blocked Ignoring",
-			     resolvedHost, target);
-			}
-		    }		/* end if(scanDetectTrigger) */
-		}		/* end if(never block) check */
-	      break;		/* get out of for(count) loop above */
-	    }			/* end if(incoming port) ==  protected port */
-	}			/* end for( check for protected port loop ) loop */
-    }				/* end for( ; ; ) loop */
-
-}				/* end PortSentryStealthModeUDP */
+/* XXX Put additional checks in here if anomaly flag is set */
+return(dataoffset);
+}
 
 
-/****************************************************************/
-/* Advanced Stealth scan detection mode for UDP                 */
-/*                                                              */
-/* This mode will see what ports are listening below 1024       */
-/* and will then monitor all the rest. This is very sensitive   */
-/* and will react on any packet hitting any monitored port.     */
-/* This is a very dangerous option and is for advanced users    */
-/*                                                              */
-/****************************************************************/
 int
-PortSentryAdvancedStealthModeUDP (void)
+SmartVerify (int port, char *mode)
 {
-  struct sockaddr_in client, server;
-  int result = TRUE, scanDetectTrigger = TRUE, hotPort = TRUE;
-  int openSockfd = 0, incomingPort = 0, smartVerify = FALSE;
-  unsigned int advancedPorts = 1024;
-  unsigned int count = 0, inUsePorts[MAXSOCKS], portCount = 0;
-  char target[IPMAXBUF], configToken[MAXBUF];
-  char resolvedHost[DNSMAXBUF], *temp;
-  struct in_addr addr;
-  struct iphdr ip;
-  struct udphdr udp;
+  int testSockfd;
 
+/* Ok here is where we "Smart-Verify" the socket. If the port was previously */
+/* unbound, but now appears to have someone there, then we will skip responding */
+/* to this inbound packet. This a basic "stateful" inspection of the */
+/* the connection */
 
-  if ((ConfigTokenRetrieve ("ADVANCED_PORTS_UDP", configToken)) == FALSE)
-    {
-      Log ("adminalert: ERROR: Could not read ADVANCED_PORTS_UDP option from config file. Assuming 1024.");
-      advancedPorts = 1024;
-    }
-  else
-    advancedPorts = atoi (configToken);
-
-  Log ("adminalert: Advanced mode will monitor first %d ports",
-       advancedPorts);
-
-  /* try to bind to all ports below 1024, any that are taken we exclude later */
-  for (count = 0; count < advancedPorts; count++)
-    {
-      if ((openSockfd = OpenUDPSocket ()) == ERROR)
+  if (mode == "TCP")
 	{
-	  Log ("adminalert: ERROR: could not open UDP socket. Aborting.\n");
-	  return (ERROR);
+  	if ((testSockfd = OpenTCPSocket ()) == ERROR)
+    	{
+    	  Log ("adminalert: ERROR: could not open TCP socket to SmartVerify.\n");
+     	 	return (FALSE);
+    	}
 	}
-      if (BindSocket (openSockfd, client, server, count) == ERROR)
-	inUsePorts[portCount++] = count;
-
-      close (openSockfd);
-    }
-
-  if ((ConfigTokenRetrieve ("ADVANCED_EXCLUDE_UDP", configToken)) != FALSE)
-    {
-      /* break out the ports */
-      if ((temp = (char *) strtok (configToken, ",")) != NULL)
+	else if (mode == "UDP")
 	{
-	  inUsePorts[portCount++] = atoi (temp);
-	  Log ("adminalert: Advanced mode will manually exclude port: %d ",
-	       inUsePorts[portCount - 1]);
-	  for (count = 0; count < MAXSOCKS; count++)
-	    {
-	      if ((temp = (char *) strtok (NULL, ",")) != NULL)
+  	if ((testSockfd = OpenUDPSocket ()) == ERROR)
+    	{
+   	   	Log ("adminalert: ERROR: could not open UDP socket to SmartVerify.\n");
+     	 	return (FALSE);
+    	}
+	}
+	else
+   	{
+			Log ("adminalert: ERROR: Illegal socket mode passed to SmartVerify.\n");
+   	 	return (FALSE);
+   	}
+
+
+  if (BindSocket (testSockfd, port) == ERROR)
 		{
-		  inUsePorts[portCount++] = atoi (temp);
-		  Log ("adminalert: Advanced mode will manually exclude port: %d ",
-		     inUsePorts[portCount - 1]);
-		}
-	      else
-		break;
-	    }
-	}
-    }
-  else
-    Log ("adminalert: Advanced mode will manually exclude no ports");
-
-
-  for (count = 0; count < portCount; count++)
-    Log
-      ("adminalert: Advanced Stealth scan detection mode activated. Ignored UDP port: %d\n",
-       inUsePorts[count]);
-
-  if ((openSockfd = OpenRAWUDPSocket ()) == ERROR)
-    {
-      Log ("adminalert: ERROR: could not open RAW UDP socket. Aborting.\n");
-      return (ERROR);
-    }
-
-  Log ("adminalert: PortSentry is now active and listening.\n");
-
-  /* main detection loop */
-  for (;;)
-    {
-      if (PacketReadUDP (openSockfd, &ip, &udp) != TRUE)
-	continue;
-
-      incomingPort = ntohs (udp.dest);
-
-      /* check if we should ignore this connection to this port */
-      for (count = 0; count < portCount; count++)
-	{
-	  if ((incomingPort == inUsePorts[count])
-	      || (incomingPort >= advancedPorts))
-	    {
-	      hotPort = FALSE;
-	      break;
-	    }
-	  else
-	    hotPort = TRUE;
-	}
-
-      if (hotPort)
-	{
-	  smartVerify = SmartVerifyUDP (client, server, incomingPort);
-
-	  if (smartVerify != TRUE)
-	    {
-	      /* copy the clients address into our buffer for nuking */
-	      addr.s_addr = (u_int) ip.saddr;
-	      SafeStrncpy (target, (char *) inet_ntoa (addr), IPMAXBUF);
-	      /* check if we should ignore this IP */
-	      result = NeverBlock (target, gblIgnoreFile);
-
-	      if (result == ERROR)
-		{
-		  Log ("attackalert: ERROR: cannot open ignore file. Blocking host anyway.\n");
-		  result = FALSE;
+#ifdef DEBUG
+ 			Log ("debug: SmartVerify: SmartVerify Port In Use: %d", port);
+#endif
+ 			close (testSockfd);
+ 			return (TRUE);
 		}
 
-	      if (result == FALSE)
-		{
-		  /* check if they've visited before */
-		  scanDetectTrigger = CheckStateEngine (target);
-
-		  if (scanDetectTrigger == TRUE)
-		    {
-			if (gblResolveHost) /* Do they want DNS resolution? */
-			{
-				if(CleanAndResolve(resolvedHost, target) != TRUE)
-				{
-		      			Log ("attackalert: ERROR: Error resolving host. \
-					resolving disabled for this host.\n");
-					snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-				}			
-			}
-			else
-			{
-				snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-			}
-
-		      Log ("attackalert: UDP scan from host: %s/%s to UDP port: %d",
-			 resolvedHost, target, incomingPort);
-		      /* Report on options present */
-		      if (ip.ihl > 5)
-			Log ("attackalert: Packet from host: %s/%s to UDP port: %d has IP options set (detection avoidance technique).",
-			       resolvedHost, target, incomingPort);
-
-		      /* check if this target is already blocked */
-		      if (IsBlocked (target, gblBlockedFile) == FALSE)
-			{
-			  if (DisposeUDP (target, incomingPort) != TRUE)
-			    Log ("attackalert: ERROR: Could not block host %s/%s!!",
-			       resolvedHost, target);
-			  else
-			    WriteBlocked (target, resolvedHost, incomingPort,
-					  gblBlockedFile, gblHistoryFile, "UDP");
-			}	/* end IsBlocked check */
-		      else
-			Log ("attackalert: Host: %s/%s is already blocked Ignoring",
-			   resolvedHost, target);
-		    }		/* end if(scanDetectTrigger) */
-		}		/* end if(never block) check */
-	    }			/* end if (smartVerify) */
-	}			/* end if(hotPort) */
-    }				/* end for( ; ; ) loop */
-}
-/* end PortSentryAdvancedStealthModeUDP */
-
-#endif
-
-
-
-
-/****************************************************************/
-/* Classic detection Mode                                       */
-/*                                                              */
-/* This mode will bind to a list of TCP sockets and wait for    */
-/* connections to happen. Although the least prone to false     */
-/* alarms, it also won't detect stealth scans                   */
-/*                                                              */
-/****************************************************************/
-int
-PortSentryModeTCP (void)
-{
-
-  struct sockaddr_in client, server;
-  int length, portCount = 0, ports[MAXSOCKS];
-  int openSockfd[MAXSOCKS], incomingSockfd, result = TRUE;
-  int count = 0, scanDetectTrigger = TRUE, showBanner = FALSE, boundPortCount = 0;
-  int selectResult = 0;
-  char *temp, target[IPMAXBUF], bannerBuffer[MAXBUF], configToken[MAXBUF];
-  char resolvedHost[DNSMAXBUF];
-  fd_set selectFds;
-
-  if ((ConfigTokenRetrieve ("TCP_PORTS", configToken)) == FALSE)
-    {
-      Log ("adminalert: ERROR: Could not read TCP_PORTS option from config file");
-      return (ERROR);
-    }
-
-  /* break out the ports */
-  if ((temp = (char *) strtok (configToken, ",")) != NULL)
-    {
-      ports[0] = atoi (temp);
-      for (count = 1; count < MAXSOCKS; count++)
-	{
-	  if ((temp = (char *) strtok (NULL, ",")) != NULL)
-	    ports[count] = atoi (temp);
-	  else
-	    break;
-	}
-      portCount = count;
-    }
-  else
-    {
-      Log ("adminalert: ERROR: No TCP ports supplied in config file. Aborting");
-      return (ERROR);
-    }
-
-  /* read in the banner if one is given */
-  if ((ConfigTokenRetrieve ("PORT_BANNER", configToken)) == TRUE)
-    {
-      showBanner = TRUE;
-      SafeStrncpy (bannerBuffer, configToken, MAXBUF);
-    }
-
-
-  /* setup select call */
-  FD_ZERO (&selectFds);
-
-  for (count = 0; count < portCount; count++)
-    {
-      Log ("adminalert: Going into listen mode on TCP port: %d\n",
-	   ports[count]);
-      if ((openSockfd[boundPortCount] = OpenTCPSocket ()) == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not open TCP socket. Aborting.\n");
-	  return (ERROR);
-	}
-
-      if (BindSocket (openSockfd[boundPortCount], client, server, ports[count]) ==
-	  ERROR)
-	{
-	  Log ("adminalert: ERROR: could not bind TCP socket: %d. Attempting to continue\n",
-	     ports[count]);
-	}
-      else			/* well we at least bound to one socket so we'll continue */
-	  boundPortCount++;
-    }
-
-
-  /* if we didn't bind to anything then abort */
-  if (boundPortCount == 0)
-    {
-      Log ("adminalert: ERROR: could not bind ANY TCP sockets. Shutting down.\n");
-      return (ERROR);
-    }
-
-  length = sizeof (client);
-
-  Log ("adminalert: PortSentry is now active and listening.\n");
-
-  /* main loop for multiplexing/resetting */
-  for (;;)
-    {
-      /* set up select call */
-      for (count = 0; count < boundPortCount; count++)
-	FD_SET (openSockfd[count], &selectFds);
-      selectResult =
-	select (MAXSOCKS, &selectFds, NULL, NULL, (struct timeval *) NULL);
-
-      /* something blew up */
-      if (selectResult < 0)
-	{
-	  Log ("adminalert: ERROR: select call failed. Shutting down.\n");
-	  return (ERROR);
-	}
-      else if (selectResult == 0)
-	{
-#ifdef DEBUG
-	  Log ("Select timeout");
-#endif
-	}
-
-      /* select is reporting a waiting socket. Poll them all to find out which */
-      else if (selectResult > 0)
-	{
-	  for (count = 0; count < boundPortCount; count++)
-	    {
-	      if (FD_ISSET (openSockfd[count], &selectFds))
-		{
-		  incomingSockfd =
-		    accept (openSockfd[count], (struct sockaddr *) &client,
-			    &length);
-		  if (incomingSockfd < 0)
-		    {
-		      Log ("attackalert: Possible stealth scan from unknown host to TCP port: %d (accept failed)",
-			 ports[count]);
-		      break;
-		    }
-
-		  /* copy the clients address into our buffer for nuking */
-		  SafeStrncpy (target, (char *) inet_ntoa (client.sin_addr),
-			       IPMAXBUF);
-		  /* check if we should ignore this IP */
-		  result = NeverBlock (target, gblIgnoreFile);
-
-		  if (result == ERROR)
-		    {
-		      Log ("attackalert: ERROR: cannot open ignore file. Blocking host anyway.\n");
-		      result = FALSE;
-		    }
-
-		  if (result == FALSE)
-		    {
-		      /* check if they've visited before */
-		      scanDetectTrigger = CheckStateEngine (target);
-
-		      if (scanDetectTrigger == TRUE)
-			{
-			  /* show the banner if one was selected */
-			  if (showBanner == TRUE)
-			    write (incomingSockfd, bannerBuffer,
-				   strlen (bannerBuffer));
-			  /* we don't need the bonehead anymore */
-			  close (incomingSockfd);
-			  if (gblResolveHost) /* Do they want DNS resolution? */
-			  {
-				if(CleanAndResolve(resolvedHost, target) != TRUE)
-				{
-		      			Log ("attackalert: ERROR: Error resolving host. \
-					resolving disabled for this host.\n");
-					snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-				}			
-			  }
-			  else
-			  {
-				snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-			  }
-
-			  Log ("attackalert: Connect from host: %s/%s to TCP port: %d",
-			     resolvedHost, target, ports[count]);
-
-			  /* check if this target is already blocked */
-			  if (IsBlocked (target, gblBlockedFile) == FALSE)
-			    {
-			      if (DisposeTCP (target, ports[count]) != TRUE)
-				Log ("attackalert: ERROR: Could not block host %s !!",
-				   target);
-			      else
-				WriteBlocked (target, resolvedHost,
-					      ports[count], gblBlockedFile,
-					      gblHistoryFile, "TCP");
-			    }
-			  else
-			    Log ("attackalert: Host: %s is already blocked. Ignoring",
-			       target);
-			}
-		    }
-		  close (incomingSockfd);
-		  break;
-		}		/* end if(FD_ISSET) */
-	    }			/* end for() */
-	}			/* end else (selectResult > 0) */
-    }				/* end main for(; ; ) loop */
-
-/* not reached */
-  close (incomingSockfd);
+  close (testSockfd);
+  return (FALSE);
 }
 
 
-
-
-
-/****************************************************************/
-/* Classic detection Mode                                       */
-/*                                                              */
-/* This mode will bind to a list of UDP sockets and wait for    */
-/* connections to happen. Stealth scanning really doesn't apply */
-/* here.                                                        */
-/*                                                              */
-/****************************************************************/
-int
-PortSentryModeUDP (void)
-{
-  struct sockaddr_in client, server;
-  int length, ports[MAXSOCKS], openSockfd[MAXSOCKS], result = TRUE;
-  int count = 0, portCount = 0, selectResult = 0, scanDetectTrigger = 0;
-  int boundPortCount = 0, showBanner = FALSE;
-  char *temp, target[IPMAXBUF], bannerBuffer[MAXBUF], configToken[MAXBUF];
-  char buffer[MAXBUF];
-  char resolvedHost[DNSMAXBUF];
-  fd_set selectFds;
-
-  if ((ConfigTokenRetrieve ("UDP_PORTS", configToken)) == FALSE)
-    {
-      Log ("adminalert: ERROR: Could not read UDP_PORTS option from config file");
-      return (ERROR);
-    }
-
-  /* break out the ports */
-  if ((temp = (char *) strtok (configToken, ",")) != NULL)
-    {
-      ports[0] = atoi (temp);
-      for (count = 1; count < MAXSOCKS; count++)
-	{
-	  if ((temp = (char *) strtok (NULL, ",")) != NULL)
-	    ports[count] = atoi (temp);
-	  else
-	    break;
-	}
-      portCount = count;
-    }
-  else
-    {
-      Log ("adminalert: ERROR: No UDP ports supplied in config file. Aborting");
-      return (ERROR);
-    }
-
-  /* read in the banner if one is given */
-  if ((ConfigTokenRetrieve ("PORT_BANNER", configToken)) == TRUE)
-    {
-      showBanner = TRUE;
-      SafeStrncpy (bannerBuffer, configToken, MAXBUF);
-    }
-
-  /* setup select call */
-  FD_ZERO (&selectFds);
-
-  for (count = 0; count < portCount; count++)
-    {
-      Log ("adminalert: Going into listen mode on UDP port: %d\n",
-	   ports[count]);
-      if ((openSockfd[boundPortCount] = OpenUDPSocket ()) == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not open UDP socket. Aborting\n");
-	  return (ERROR);
-	}
-      if (BindSocket (openSockfd[boundPortCount], client, server, ports[count]) == ERROR)
-	{
-	  Log ("adminalert: ERROR: could not bind UDP socket: %d. Attempting to continue\n",
-	     ports[count]);
-	}
-      else			/* well we at least bound to one socket so we'll continue */
-	boundPortCount++;
-    }
-
-/* if we didn't bind to anything then abort */
-  if (boundPortCount == 0)
-    {
-      Log ("adminalert: ERROR: could not bind ANY UDP sockets. Shutting down.\n");
-      return (ERROR);
-    }
-
-
-  length = sizeof (client);
-  Log ("adminalert: PortSentry is now active and listening.\n");
-
-/* main loop for multiplexing/resetting */
-  for (;;)
-    {
-      /* set up select call */
-      for (count = 0; count < boundPortCount; count++)
-	FD_SET (openSockfd[count], &selectFds);
-      /* setup the select multiplexing (blocking mode) */
-      selectResult =
-	select (MAXSOCKS, &selectFds, NULL, NULL, (struct timeval *) NULL);
-
-      if (selectResult < 0)
-	{
-	  Log ("adminalert: ERROR: select call failed. Shutting down.\n");
-	  return (ERROR);
-	}
-      else if (selectResult == 0)
-	{
-#ifdef DEBUG
-	  Log ("Select timeout");
-#endif
-	}
-
-      /* select is reporting a waiting socket. Poll them all to find out which */
-      else if (selectResult > 0)
-	{
-	  for (count = 0; count < portCount; count++)
-	    {
-	      if (FD_ISSET (openSockfd[count], &selectFds))
-		{
-		  /* here just read in one byte from the UDP socket, that's all we need to */
-		  /* know that this person is a jerk */
-		  if (recvfrom (openSockfd[count], buffer, 1, 0,
-		       (struct sockaddr *) &client, &length) < 0)
-		    {
-		      Log ("adminalert: ERROR: could not accept incoming socket for UDP port: %d\n",
-			 ports[count]);
-		      break;
-		    }
-
-		  /* copy the clients address into our buffer for nuking */
-		  SafeStrncpy (target, (char *) inet_ntoa (client.sin_addr),
-			       IPMAXBUF);
-#ifdef DEBUG
-		  Log ("debug: PortSentryModeUDP: accepted UDP connection from: %s\n",
-		     target);
-#endif
-		  /* check if we should ignore this IP */
-		  result = NeverBlock (target, gblIgnoreFile);
-		  if (result == ERROR)
-		    {
-		      Log ("attackalert: ERROR: cannot open ignore file. Blocking host anyway.\n");
-		      result = FALSE;
-		    }
-		  if (result == FALSE)
-		    {
-		      /* check if they've visited before */
-		      scanDetectTrigger = CheckStateEngine (target);
-		      if (scanDetectTrigger == TRUE)
-			{
-			  /* show the banner if one was selected */
-			  if (showBanner == TRUE)
-			    sendto (openSockfd[count], bannerBuffer,
-				    strlen (bannerBuffer), 0,
-				    (struct sockaddr *) &client, length);
-
-			  if (gblResolveHost) /* Do they want DNS resolution? */
-			  {
-				if(CleanAndResolve(resolvedHost, target) != TRUE)
-				{
-		      			Log ("attackalert: ERROR: Error resolving host. \
-					resolving disabled for this host.\n");
-					snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-				}			
-			  }
-			  else
-			  {
-				snprintf (resolvedHost, DNSMAXBUF, "%s", target);
-			  }
-
-			  Log
-			    ("attackalert: Connect from host: %s/%s to UDP port: %d",
-			     resolvedHost, target, ports[count]);
-			  /* check if this target is already blocked */
-			  if (IsBlocked (target, gblBlockedFile) == FALSE)
-			    {
-			      if (DisposeUDP (target, ports[count]) != TRUE)
-				Log ("attackalert: ERROR: Could not block host %s !!",
-				   target);
-			      else
-				WriteBlocked (target, resolvedHost,
-					      ports[count], gblBlockedFile,
-					      gblHistoryFile, "UDP");
-			    }
-			  else
-			    Log ("attackalert: Host: %s is already blocked. Ignoring",
-			       target);
-			}
-		    }
-		  break;
-		}		/* end if(FD_ISSET) */
-	    }			/* end for() */
-	}			/* end else (selectResult > 0) */
-    }				/* end main for(; ; ) loop */
-
-}				/* end UDP PortSentry */
-
-
-
-
-/* kill the TCP connection depending on config option */
-int
-DisposeTCP (char *target, int port)
-{
-  int status = TRUE;
-
-#ifdef DEBUG
-  Log ("debug: DisposeTCP: disposing of host %s on port %d with option: %d",
-       target, port, gblBlockTCP);
-  Log ("debug: DisposeTCP: killRunCmd: %s", gblKillRunCmd);
-  Log ("debug: DisposeTCP: gblRunCmdFirst: %d", gblRunCmdFirst);
-  Log ("debug: DisposeTCP: killHostsDeny: %s", gblKillHostsDeny);
-  Log ("debug: DisposeTCP: killRoute: %s  %d", gblKillRoute,
-       strlen (gblKillRoute));
-#endif
-/* Should we ignore TCP from active response? */
-  if (gblBlockTCP == 1)
-    {
-      /* run external command first, hosts.deny second, dead route last */
-      if (gblRunCmdFirst)
-	{
-      	if (strlen (gblKillRunCmd) > 0)
-		if (KillRunCmd (target, port, gblKillRunCmd, gblDetectionType) != TRUE)
-	  		status = FALSE;
-      	if (strlen (gblKillHostsDeny) > 0)
-		if (KillHostsDeny (target, port, gblKillHostsDeny, gblDetectionType) != TRUE)
-	  		status = FALSE;
-      	if (strlen (gblKillRoute) > 0)
-		if (KillRoute (target, port, gblKillRoute, gblDetectionType) != TRUE)
-	  		status = FALSE;
-	}
-      /* run hosts.deny first, dead route second, external command last */
-      else
-	{
-      	if (strlen (gblKillHostsDeny) > 0)
-		if (KillHostsDeny (target, port, gblKillHostsDeny, gblDetectionType) != TRUE)
-	  		status = FALSE;
-      	if (strlen (gblKillRoute) > 0)
-		if (KillRoute (target, port, gblKillRoute, gblDetectionType) != TRUE)
-	  		status = FALSE;
-      	if (strlen (gblKillRunCmd) > 0)
-		if (KillRunCmd (target, port, gblKillRunCmd, gblDetectionType) != TRUE)
-	  		status = FALSE;
-	}
-    }
-  else if (gblBlockTCP == 2)
-    {
-      /* run external command only */
-      if (strlen (gblKillRunCmd) > 0)
-	if (KillRunCmd (target, port, gblKillRunCmd, gblDetectionType) != TRUE)
-	  status = FALSE;
-    }
-  else
-    Log ("attackalert: Ignoring TCP response per configuration file setting.");
-
-  return (status);
-}
-
-
-/* kill the UDP connection depending on config option */
-int
-DisposeUDP (char *target, int port)
-{
-  int status = TRUE;
-
-#ifdef DEBUG
-  Log ("debug: DisposeUDP: disposing of host %s on port %d with option: %d",
-       target, port, gblBlockUDP);
-  Log ("debug: DisposeUDP: killRunCmd: %d", gblKillRunCmd);
-  Log ("debug: DisposeUDP: gblRunCmdFirst: %s", gblRunCmdFirst);
-  Log ("debug: DisposeUDP: killHostsDeny: %s", gblKillHostsDeny);
-  Log ("debug: DisposeUDP: killRoute: %s  %d", gblKillRoute,
-       strlen (gblKillRoute));
-#endif
-/* Should we ignore TCP from active response? */
-  if (gblBlockUDP == 1)
-    {	
-      /* run external command first, hosts.deny second, dead route last */
-      if (gblRunCmdFirst)
-	{
-      	if (strlen (gblKillRunCmd) > 0)
-		if (KillRunCmd (target, port, gblKillRunCmd, gblDetectionType) != TRUE)
-	  		status = FALSE;
-      	if (strlen (gblKillHostsDeny) > 0)
-		if (KillHostsDeny (target, port, gblKillHostsDeny, gblDetectionType) != TRUE)
-	  		status = FALSE;
-      	if (strlen (gblKillRoute) > 0)
-		if (KillRoute (target, port, gblKillRoute, gblDetectionType) != TRUE)
-	  		status = FALSE;
-	}
-      /* run hosts.deny first, dead route second, external command last */
-      else
-	{
-      	if (strlen (gblKillHostsDeny) > 0)
-		if (KillHostsDeny (target, port, gblKillHostsDeny, gblDetectionType) != TRUE)
-	  		status = FALSE;
-      	if (strlen (gblKillRoute) > 0)
-		if (KillRoute (target, port, gblKillRoute, gblDetectionType) != TRUE)
-	  		status = FALSE;
-      	if (strlen (gblKillRunCmd) > 0)
-		if (KillRunCmd (target, port, gblKillRunCmd, gblDetectionType) != TRUE)
-	  		status = FALSE;
-	}
-    }
-  else if (gblBlockUDP == 2)
-    {
-      /* run external command only */
-      if (strlen (gblKillRunCmd) > 0)
-	if (KillRunCmd (target, port, gblKillRunCmd, gblDetectionType) != TRUE)
-	  status = FALSE;
-    }
-  else
-    Log ("attackalert: Ignoring UDP response per configuration file setting.");
-
-  return (status);
-}
-
-
-/* duh */
 void
 Usage (void)
 {
-  printf ("PortSentry - Port Scan Detector.\n");
-  printf ("Copyright 1997-2003 Craig H. Rowland <craigrowland at users dot 
-sourceforget dot net>\n");
-  printf ("Licensing restrictions apply. Please see documentation\n");
+  printf ("Psionic PortSentry - Port Scan Detector.\n");
+  printf ("Copyright 1997-2002 Psionic Technologies, Inc. http://www.psionic.com\n");
+  printf ("Licensing restrictions apply. COMMERCIAL RESALE PROHIBITED WITHOUT LICENSING.\n");
+  printf ("See documentation for more information. Questions and comments: <sentrysupport@psionic.com>\n");
   printf ("Version: %s\n\n", VERSION);
-#ifdef SUPPORT_STEALTH
-  printf ("usage: portsentry [-tcp -udp -stcp -atcp -sudp -audp]\n\n");
-#else
-  printf ("Stealth scan detection not supported on this platform\n");
-  printf ("usage: portsentry [-tcp -udp]\n\n");
-#endif
+  printf ("usage: portsentry\n\n");
   printf ("*** PLEASE READ THE DOCS BEFORE USING *** \n\n");
 }
-
-
 
 /* our cheesy state engine to monitor who has connected here before */
 int
@@ -1616,23 +871,23 @@ CheckStateEngine (char *target)
   gotOne = 1;			/* our flag counter if we get a match */
   scanDetectTrigger = TRUE;	/* set to TRUE until set otherwise */
 
-  if (gblConfigTriggerCount > 0)
+  if (gblConfig.gblTriggerCount > 0)
     {
       for (count = 0; count < MAXSTATE; count++)
 	{
 	  /* if the array has the IP address then increment the gotOne counter and */
 	  /* check the trigger value. If it is exceeded break out of the loop and */
 	  /* set the detecttrigger to TRUE */
-	  if (strcmp (gblScanDetectHost[count], target) == 0 )
+	  if (strcmp (gblConfig.gblScanDetectHost[count], target) == 0 )
 	    {
 	      /* compare the number of matches to the configured trigger value */
 	      /* if we've exceeded we can stop this noise */
-	      if (++gotOne >= gblConfigTriggerCount)
+	      if (++gotOne >= gblConfig.gblTriggerCount)
 		{
 		  scanDetectTrigger = TRUE;
 #ifdef DEBUG
 		  Log ("debug: CheckStateEngine: host: %s has exceeded trigger value: %d\n",
-		     gblScanDetectHost[count], gblConfigTriggerCount);
+		     gblConfig.gblScanDetectHost[count], gblConfig.gblTriggerCount);
 #endif
 		  break;
 		}
@@ -1643,36 +898,36 @@ CheckStateEngine (char *target)
 
       /* now add the fresh meat into the state engine */
       /* if our array is still less than MAXSTATE large add it to the end */
-      if (gblScanDetectCount < MAXSTATE)
+      if (gblConfig.gblScanDetectCount < MAXSTATE)
 	{
-	  SafeStrncpy (gblScanDetectHost[gblScanDetectCount], target,
+	  SafeStrncpy (gblConfig.gblScanDetectHost[gblConfig.gblScanDetectCount], target,
 		       IPMAXBUF);
-	  gblScanDetectCount++;
+	  gblConfig.gblScanDetectCount++;
 	}
       else
 	{
 	  /* otherwise tack it to the beginning and start overwriting older ones */
-	  gblScanDetectCount = 0;
-	  SafeStrncpy (gblScanDetectHost[gblScanDetectCount], target,
+	  gblConfig.gblScanDetectCount = 0;
+	  SafeStrncpy (gblConfig.gblScanDetectHost[gblConfig.gblScanDetectCount], target,
 		       IPMAXBUF);
-	  gblScanDetectCount++;
+	  gblConfig.gblScanDetectCount++;
 	}
 
 #ifdef DEBUG
       for (count = 0; count < MAXSTATE; count++)
 	Log ("debug: CheckStateEngine: state engine host: %s -> position: %d Detected: %d\n",
-	   gblScanDetectHost[count], count, scanDetectTrigger);
+	   gblConfig.gblScanDetectHost[count], count, scanDetectTrigger);
 #endif
       /* end catch to set state if gblConfigTriggerCount == 0 */
-      if (gotOne >= gblConfigTriggerCount)
+      if (gotOne >= gblConfig.gblTriggerCount)
 	scanDetectTrigger = TRUE;
     }
 
 
-  if (gblConfigTriggerCount > MAXSTATE)
+  if (gblConfig.gblTriggerCount > MAXSTATE)
     {
       Log ("securityalert: WARNING: Trigger value %d is larger than state engine capacity of %d.\n",
-	gblConfigTriggerCount);
+	gblConfig.gblTriggerCount);
       Log ("Adjust the value lower or recompile with a larger state engine value.\n",
 	 MAXSTATE);
       Log ("securityalert: Blocking host anyway because of invalid trigger value");
@@ -1682,98 +937,76 @@ CheckStateEngine (char *target)
 }
 
 
-#ifdef SUPPORT_STEALTH
-/* This takes a tcp packet and reports what type of scan it is */
-char *
-ReportPacketType (struct tcphdr tcpPkt)
-{
-  static char packetDesc[MAXBUF];
-  static char *packetDescPtr = packetDesc;
 
-  if ((tcpPkt.syn == 0) && (tcpPkt.fin == 0) && (tcpPkt.ack == 0) \
-      && (tcpPkt.psh == 0) && (tcpPkt.rst == 0) && (tcpPkt.urg == 0))
-    snprintf (packetDesc, MAXBUF, " TCP NULL scan");
-  else if ((tcpPkt.fin == 1) && (tcpPkt.urg == 1) && (tcpPkt.psh == 1))
-    snprintf (packetDesc, MAXBUF, "TCP XMAS scan");
-  else if ((tcpPkt.fin == 1) && (tcpPkt.syn != 1) && (tcpPkt.ack != 1) \
-	   &&(tcpPkt.psh != 1) && (tcpPkt.rst != 1) && (tcpPkt.urg != 1))
-    snprintf (packetDesc, MAXBUF, "TCP FIN scan");
-  else if ((tcpPkt.syn == 1) && (tcpPkt.fin != 1) && (tcpPkt.ack != 1) \
-	   &&(tcpPkt.psh != 1) && (tcpPkt.rst != 1) && (tcpPkt.urg != 1))
-    snprintf (packetDesc, MAXBUF, "TCP SYN/Normal scan");
-  else
-    snprintf (packetDesc, MAXBUF,
-	      "Unknown Type: TCP Packet Flags: SYN: %d FIN: %d ACK: %d PSH: %d URG: %d RST: %d", 
-	      tcpPkt.syn, tcpPkt.fin, tcpPkt.ack, tcpPkt.psh, tcpPkt.urg,
-	      tcpPkt.rst);
 
-  return (packetDescPtr);
-}
-
+/* kill the connection depending on config option */
 int
-SmartVerifyTCP (struct sockaddr_in client, struct sockaddr_in server,
-		int port)
+Dispose (char *target, int port, char *mode)
 {
+  int status = TRUE;
+	int responseFlags = 0;
 
-  int testSockfd;
-
-/* Ok here is where we "Smart-Verify" the socket. If the port was previously */
-/* unbound, but now appears to have someone there, then we will skip responding */
-/* to this inbound packet. This a basic "stateful" inspection of the */
-/* the connection */
-
-  if ((testSockfd = OpenTCPSocket ()) == ERROR)
-    {
-      Log ("adminalert: ERROR: could not open TCP socket to smart-verify.\n");
-      return (FALSE);
-    }
-  else
-    {
-      if (BindSocket (testSockfd, client, server, port) == ERROR)
+if (mode == "TCP")
+	responseFlags = gblFlags.gblBlockTCP;
+else if (mode == "UDP")
+	responseFlags = gblFlags.gblBlockUDP;
+else
 	{
-#ifdef DEBUG
-	  Log ("debug: SmartVerify: Smart-Verify Port In Use: %d", port);
-#endif
-	  close (testSockfd);
-	  return (TRUE);
+   Log ("attackalert: An unknown response type was passed to the Dispose function.\n");
+   return(ERROR);
 	}
-    }
 
-  close (testSockfd);
-  return (FALSE);
+#ifdef DEBUG
+  Log ("debug: Dispose: disposing of host %s on port %d with mode %s and option: %d",
+       target, port, mode, responseFlags);
+  Log ("debug: Dispose: killRunCmd: %s", gblConfig.gblKillRunCmd);
+  Log ("debug: Dispose: gblRunCmdFirst: %d", gblFlags.gblRunCmdFirst);
+  Log ("debug: Dispose: killHostsDeny: %s", gblConfig.gblKillHostsDeny);
+  Log ("debug: Dispose: killRoute: %s  %d", gblConfig.gblKillRoute,
+       strlen (gblConfig.gblKillRoute));
+#endif
+
+	/* Should we ignore active response? */
+	if (responseFlags == 1)
+		{
+			/* run external command first, hosts.deny second, dead route last */
+			if (gblFlags.gblRunCmdFirst)
+				{
+					if (strlen (gblConfig.gblKillRunCmd) > 0)
+						if (KillRunCmd (target, port, gblConfig.gblKillRunCmd, mode) != TRUE)
+							status = FALSE;
+					if (strlen (gblConfig.gblKillHostsDeny) > 0)
+						if (KillHostsDeny (target, port, gblConfig.gblKillHostsDeny, mode) != TRUE)
+							status = FALSE;
+					if (strlen (gblConfig.gblKillRoute) > 0)
+						if (KillRoute (target, port, gblConfig.gblKillRoute, mode) != TRUE)
+							status = FALSE;
+				}
+			/* run hosts.deny first, dead route second, external command last */
+			else
+				{
+					if (strlen (gblConfig.gblKillHostsDeny) > 0)
+						if (KillHostsDeny (target, port, gblConfig.gblKillHostsDeny, mode) != TRUE)
+						status = FALSE;
+					if (strlen (gblConfig.gblKillRoute) > 0)
+						if (KillRoute (target, port, gblConfig.gblKillRoute, mode) != TRUE)
+						status = FALSE;
+					if (strlen (gblConfig.gblKillRunCmd) > 0)
+						if (KillRunCmd (target, port, gblConfig.gblKillRunCmd, mode) != TRUE)
+						status = FALSE;
+				}
+		}
+	else if (responseFlags == 2)
+		{
+			/* run external command only */
+			if (strlen (gblConfig.gblKillRunCmd) > 0)
+				if (KillRunCmd (target, port, gblConfig.gblKillRunCmd, mode) != TRUE)
+				status = FALSE;
+		}
+	else
+		Log ("attackalert: Ignoring response per configuration file setting.");
+
+return (status);
 }
 
-int
-SmartVerifyUDP (struct sockaddr_in client, struct sockaddr_in server,
-		int port)
-{
-  int testSockfd;
-
-/* Ok here is where we "Smart-Verify" the socket. If the port was previously */
-/* unbound, but now appears to have someone there, then we will skip responding */
-/* to this inbound packet. This essentially is a "stateful" inspection of the */
-/* the connection */
-
-  if ((testSockfd = OpenUDPSocket ()) == ERROR)
-    {
-      Log ("adminalert: ERROR: could not open UDP socket to smart-verify.\n");
-      return (FALSE);
-    }
-  else
-    {
-      if (BindSocket (testSockfd, client, server, port) == ERROR)
-	{
-#ifdef DEBUG
-	  Log ("debug: SmartVerify: Smart-Verify Port In Use: %d", port);
-#endif
-	  close (testSockfd);
-	  return (TRUE);
-	}
-    }
-
-  close (testSockfd);
-  return (FALSE);
-}
-
-#endif /* SUPPORT_STEALTH */
 

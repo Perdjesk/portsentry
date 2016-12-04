@@ -1,25 +1,31 @@
 /************************************************************************/
 /*                                                                      */
-/* PortSentry								*/
+/* Psionic PortSentry							*/
 /*                                                                      */
 /* Created: 10-12-1997                                                  */
-/* Modified: 05-23-2003                                                 */
+/* Modified: 02-18-2002                                                 */
 /*                                                                      */
-/* Send all changes/modifications/bugfixes to:				*/
-/* craigrowland at users dot sourceforge dot net    			*/
+/* Send all changes/modifications/bugfixes to sentrysupport@psionic.com */
 /*                                                                      */
 /*                                                                      */
-/* This software is Copyright(c) 1997-2003 Craig Rowland	        */
+/* This software is Copyright(c) 1997-2002 Psionic Technologies, Inc.   */
 /*                                                                      */
-/* This software is covered under the Common Public License v1.0	*/
-/* See the enclosed LICENSE file for more information.			*/
-/* $Id: portsentry.h,v 1.32 2003/05/23 17:50:20 crowland Exp crowland $ */
+/* Disclaimer:                                                          */
+/*                                                                      */
+/* All software distributed by Psionic Technologies is distributed 	*/
+/* AS IS and carries NO WARRANTY or GUARANTEE OF ANY KIND. End users of */
+/* the software acknowledge that they will not hold Psionic Technologies*/
+/* liable for failure or non-function of the software product. YOU ARE 	*/
+/* USING THIS PRODUCT AT YOUR OWN RISK.					*/
+/*                                                                      */
+/* Licensing restrictions apply. Commercial re-sell is prohibited under */
+/* certain conditions. See the license that came with this package or 	*/
+/* visit http://www.psionic.com for more information. 			*/
+/*                                                                      */
+/* $Id: portsentry.h,v 1.34 2002/04/08 16:48:27 crowland Exp crowland $ */
 /************************************************************************/
 
-
-
-
-#define VERSION "1.2"
+#define VERSION "2.0b1"
 
 #include <stdio.h>
 #include <syslog.h>
@@ -35,61 +41,73 @@
 #include <assert.h>
 #include <sys/param.h>
 #include <sys/types.h>
-#ifndef _LINUX_C_LIB_VERSION
-#include <sys/socket.h>
 #include <sys/stat.h>
-#include <netinet/in.h>
-#endif
+#include <sys/socket.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
 #include <arpa/inet.h>
+#include <net/if.h>
+#include <netinet/in.h>
+
+#ifdef BSD
+	#include <netinet/in_systm.h>
+	#include <netinet/ip_ether.h>
+#endif
+
+#include <netinet/if_ether.h>
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/udp.h>
+#include <netinet/tcp.h>
+#include <pcap.h>
 
 #include "portsentry_config.h"
-#include "portsentry_io.h"
-#include "portsentry_util.h"
 
-#ifdef SUPPORT_STEALTH
-	#ifdef LINUX
-		#include "portsentry_tcpip.h"
-		#include <netinet/in_systm.h>
-	#endif
-
-#define TCPPACKETLEN 80
-#define UDPPACKETLEN 68
-#endif /* SUPPORT_STEALTH */
-
-#ifdef NEXT
-	#include <ansi.h>
-#endif
+#define MAXBUF	1024
+#define MAXPORTS 64
 
 #define ERROR -1
 #define TRUE 1
 #define FALSE 0
-#define MAXBUF 1024
+
+/* TCP Bits for unused */
+#define TCP_UNUSED1 0x40
+#define TCP_UNUSED2 0x80
+
 /* max size of an IP address plus NULL */
 #define IPMAXBUF 16
-/* max sockets we can open */
-#define MAXSOCKS 64
 
 /* Really is about 1025, but we don't need the length for our purposes */
 #define DNSMAXBUF 255
 
+/* Size of link encapsulation */
+#define LINK_ETHERSIZE 14
 
 /* prototypes */
-int PortSentryModeTCP (void);
-int PortSentryModeUDP (void);
-int DisposeUDP (char *, int);
-int DisposeTCP (char *, int);
+void PktEngine(u_char *, const struct pcap_pkthdr *, const u_char *);
+int CheckIP(const struct ip *);
+int CheckTCP(const struct ip *, const struct tcphdr *);
+int CheckUDP(const struct ip *, const struct udphdr *);
+int CheckICMP(const struct ip *, const struct icmp *);
+int InitInterface(char * interface);
+int InitStats(void);
+int InitFilter(void);
+int InitConfig (void);
+int Dispose (char *, int, char *);
 int CheckStateEngine (char *);
 int InitConfig(void);
 void Usage (void);
-int SmartVerifyTCP(struct sockaddr_in, struct sockaddr_in, int);
-int SmartVerifyUDP(struct sockaddr_in, struct sockaddr_in, int);
+int SmartVerify(int, char *);
 
-#ifdef SUPPORT_STEALTH
-int PortSentryStealthModeTCP (void);
-int PortSentryAdvancedStealthModeTCP (void);
-int PortSentryStealthModeUDP (void);
-int PortSentryAdvancedStealthModeUDP (void);
-char * ReportPacketType(struct tcphdr );
-int PacketReadTCP(int, struct iphdr *, struct tcphdr *);
-int PacketReadUDP(int, struct iphdr *, struct udphdr *);
-#endif
+
+/* Status Variables */
+/* XXX Make these less global */
+struct stats{
+	int gblFrameCount;
+	int gblIPPackCount;
+	int gblIcmpPackCount;
+	int gblTcpPackCount;
+	int gblUdpPackCount;
+} gblStats;
+

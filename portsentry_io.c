@@ -1,28 +1,36 @@
 /************************************************************************/
 /*                                                                      */
-/* PortSentry								*/
+/* Psionic PortSentry							*/
 /*                                                                      */
 /* Created: 10-12-1997                                                  */
-/* Modified: 05-23-2003                                                 */
+/* Modified: 03-06-2002                                                 */
 /*                                                                      */
-/* Send all changes/modifications/bugfixes to:				*/
-/* craigrowland at users dot sourceforge dot net    			*/
+/* Send all changes/modifications/bugfixes to sentrysupport@psionic.com */
 /*                                                                      */
 /*                                                                      */
-/* This software is Copyright(c) 1997-2003 Craig Rowland	        */
+/* This software is Copyright(c) 1997-2002 Psionic Technologies, Inc.   */
 /*                                                                      */
-/* This software is covered under the Common Public License v1.0	*/
-/* See the enclosed LICENSE file for more information.			*/
-/* $Id: portsentry_io.c,v 1.36 2003/05/23 17:41:40 crowland Exp crowland $ */
+/* Disclaimer:                                                          */
+/*                                                                      */
+/* All software distributed by Psionic Technologies is distributed 	*/
+/* AS IS and carries NO WARRANTY or GUARANTEE OF ANY KIND. End users of */
+/* the software acknowledge that they will not hold Psionic Technologies*/
+/* liable for failure or non-function of the software product. YOU ARE 	*/
+/* USING THIS PRODUCT AT YOUR OWN RISK.					*/
+/*                                                                      */
+/* Licensing restrictions apply. Commercial re-sell is prohibited under */
+/* certain conditions. See the license that came with this package or 	*/
+/* visit http://www.psionic.com for more information. 			*/
+/*                                                                      */
+/* $Id: portsentry_io.c,v 1.45 2002/04/08 16:48:35 crowland Exp crowland $ */
 /************************************************************************/
-
 
 #include "portsentry.h"
 #include "portsentry_io.h"
 #include "portsentry_util.h"
 
 /* Main logging function to surrogate syslog */
-void 
+void
 Log (char *logentry, ...)
 {
   char logbuffer[MAXBUF];
@@ -40,45 +48,74 @@ Log (char *logentry, ...)
 }
 
 
-void 
-Exit (int status)
+void
+ExitNow (int status)
 {
-  Log ("securityalert: PortSentry is shutting down\n");
-  Log ("adminalert: PortSentry is shutting down\n");
-  exit (status);
+extern pcap_t *gblHandlePtr;
+
+Log ("securityalert: Psionic PortSentry is shutting down\n");
+Log ("adminalert: Psionic PortSentry is shutting down\n");
+PrintStats();
+
+if(gblHandlePtr)
+	pcap_close(gblHandlePtr);
+
+exit (status);
 }
 
 
-void 
+void
 Start (void)
 {
-  Log ("adminalert: PortSentry %s is starting.\n", VERSION);
+  Log ("adminalert: Psionic PortSentry %s is starting.\n", VERSION);
+  Log ("adminalert: Copyright 1997-2002 Psionic Technologies, Inc. http://www.psionic.com\n");
+  Log ("adminalert: Licensing restrictions apply. COMMERCIAL RESALE PROHIBITED WITHOUT LICENSING.\n");
+
 #ifdef DEBUG
-  printf("Compiled: " __DATE__ " at " __TIME__ "\n");
+  Log ("adminalert: Compiled: " __DATE__ " at " __TIME__ "\n");
 #endif
 }
 
 
+void PrintStats(void)
+{
+  Log ("adminalert: stats: Frame counter: %d\n",gblStats.gblFrameCount);
+  Log ("adminalert: stats: IP counter: %d\n",gblStats.gblIPPackCount);
+  Log ("adminalert: stats: TCP counter: %d\n",gblStats.gblTcpPackCount);
+  Log ("adminalert: stats: UDP counter: %d\n",gblStats.gblUdpPackCount);
+  Log ("adminalert: stats: ICMP counter: %d\n",gblStats.gblIcmpPackCount);
+}
+
+/* XXX Not working yet */
+void SignalCatcher(int signal)
+{
+if(signal == SIGHUP)
+	{
+		PrintStats();
+	}
+}
 
 /* The daemonizing code copied from Advanced Programming */
 /* in the UNIX Environment by W. Richard Stevens with minor changes */
-int 
+int
 DaemonSeed (void)
 {
   int childpid;
 
+/* XXX Signal handling is broken for some reason with pcap */
+/* Debug */
   signal (SIGALRM, SIG_IGN);
   signal (SIGHUP, SIG_IGN);
   signal (SIGPIPE, SIG_IGN);
-  signal (SIGTERM, Exit);
-  signal (SIGABRT, Exit);
-  signal (SIGURG, Exit);
-  signal (SIGKILL, Exit);
+  signal (SIGTERM, SIG_IGN);
+  signal (SIGABRT, SIG_IGN);
+  signal (SIGURG, SIG_IGN);
+  signal (SIGKILL, SIG_IGN);
 
   if ((childpid = fork ()) < 0)
     return (ERROR);
   else if (childpid > 0)
-    exit (0);
+    exit(0);
 
   setsid ();
   chdir ("/");
@@ -101,7 +138,7 @@ CompareIPs(char *target, char *ignoreAddr, int ignoreNetmaskBits)
 
   ipAddr = inet_addr(ignoreAddr);
   targetAddr = inet_addr(target);
-  netmaskAddr = htonl (0xFFFFFFFF << (32 - ignoreNetmaskBits)); 
+  netmaskAddr = htonl (0xFFFFFFFF << (32 - ignoreNetmaskBits));
 
 
 #ifdef DEBUG
@@ -125,7 +162,7 @@ CompareIPs(char *target, char *ignoreAddr, int ignoreNetmaskBits)
 
 
 /* check hosts that should never be blocked */
-int 
+int
 NeverBlock (char *target, char *filename)
 {
   FILE *input;
@@ -165,7 +202,7 @@ NeverBlock (char *target, char *filename)
           		break;
         	}
 	}
-	
+
 	/* Return pointer to slash if it exists and copy data to buffer */
 	slashPos = strchr(tempBuffer, '/');
 	if (slashPos)
@@ -192,7 +229,7 @@ NeverBlock (char *target, char *filename)
 #ifdef DEBUG
 	  		Log ("debug: NeverBlock: Host: %s found in ignore file with netmask %s\n", target, netmaskBuffer);
 #endif
-	
+
 	  		fclose (input);
 	  		return (TRUE);
 	}
@@ -209,7 +246,7 @@ NeverBlock (char *target, char *filename)
 
 
 /* Make sure the config file is available */
-int 
+int
 CheckConfig (void)
 {
   FILE *input;
@@ -228,9 +265,9 @@ return(TRUE);
 
 /* This writes out blocked hosts to the blocked file. It adds the hostname */
 /* time stamp, and port connection that was acted on */
-int 
-WriteBlocked (char *target, char *resolvedHost, int port, char *blockedFilename, 
-char *historyFilename, char *portType)
+int
+WriteBlocked (char *target, char *resolvedHost, char *protoType, char *scanType, int dstPort, int srcPort,
+char *blockedFilename, char *historyFilename)
 {
   FILE *output;
   int blockedStatus = TRUE, historyStatus = TRUE;
@@ -247,51 +284,44 @@ char *historyFilename, char *portType)
 #endif
 
 
-      if ((output = fopen (blockedFilename, "a")) == NULL)
-	{
-	  Log ("adminalert: ERROR: Cannot open blocked file: %s.\n", blockedFilename);
-	  blockedStatus = FALSE;
-	}
-      else
-	{
-	  fprintf (output, "%ld - %02d/%02d/%04d %02d:%02d:%02d Host: %s/%s Port: %d %s Blocked\n",
-	    current_time, tmptr->tm_mon + 1, tmptr->tm_mday, tmptr->tm_year + 1900,
-		   tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec, resolvedHost, target, port,
-		   portType);
-	  fclose (output);
-	  blockedStatus = TRUE;
-	}
+	if ((output = fopen (blockedFilename, "a")) == NULL)
+		{
+		  Log ("adminalert: ERROR: Cannot open blocked file: %s.\n", blockedFilename);
+		  blockedStatus = FALSE;
+		}
+	else
+		{
+		  fprintf (output, "%ld - %02d/%02d/%04d %02d:%02d:%02d Host: %s/%s Protocol: %s ScanType: %s DstPort: %d SrcPort %d\n",
+	 					   current_time, tmptr->tm_mon + 1, tmptr->tm_mday, tmptr->tm_year + 1900,
+		   				tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec, resolvedHost, target, protoType, scanType, dstPort, srcPort);
+	  	fclose (output);
+	  	blockedStatus = TRUE;
+		}
 
 #ifdef DEBUG
       Log ("debug: WriteBlocked: Opening history file: %s \n", historyFilename);
 #endif
-      if ((output = fopen (historyFilename, "a")) == NULL)
-	{
-	  Log ("adminalert: ERROR: Cannot open history file: %s.\n", historyFilename);
-	  historyStatus = FALSE;
-	}
-      else
-	{
-	  fprintf (output, "%ld - %02d/%02d/%04d %02d:%02d:%02d Host: %s/%s Port: %d %s Blocked\n",
-	    current_time, tmptr->tm_mon + 1, tmptr->tm_mday, tmptr->tm_year + 1900,
-		   tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec, resolvedHost, target, port, 
-	  	   portType);
-	  fclose (output);
-	  historyStatus = TRUE;
-	}
-
-  if (historyStatus || blockedStatus == FALSE)
-    return (FALSE);
+	if ((output = fopen (historyFilename, "a")) == NULL)
+		{
+		  Log ("adminalert: ERROR: Cannot open history file: %s.\n", historyFilename);
+		  historyStatus = FALSE;
+		}
   else
-    return (TRUE);
+		{
+		  fprintf (output, "%ld - %02d/%02d/%04d %02d:%02d:%02d Host: %s/%s Protocol: %s ScanType: %s DstPort: %d SrcPort %d\n",
+	 					   current_time, tmptr->tm_mon + 1, tmptr->tm_mday, tmptr->tm_year + 1900,
+			   				tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec, resolvedHost, target, protoType, scanType, dstPort, srcPort);
+	  	fclose (output);
+	  	historyStatus = TRUE;
+		}
+
+return(historyStatus && blockedStatus);
 }
 
 
-
-
 /* This reads a token from the config file up to the "=" and returns the string */
-/* up to the first space or NULL */
-int 
+/* up to the first space or NULL. configToken MUST be MAXBUF size */
+int
 ConfigTokenRetrieve (char *token, char *configToken)
 {
   FILE *config;
@@ -305,21 +335,24 @@ ConfigTokenRetrieve (char *token, char *configToken)
     }
   else
     {
-#ifdef DEBUG
+#ifdef DEBUG2
       Log ("debug: ConfigTokenRetrieve: checking for token %s", token);
 #endif
+      /* Empty configToken */
+      memset(configToken, '\0', MAXBUF);
+
       while ((fgets (buffer, MAXBUF, config)) != NULL)
 	{
 	  /* this skips comments */
 	  if (buffer[0] != '#')
 	    {
-#ifdef DEBUG
+#ifdef DEBUG2
 	      Log ("debug: ConfigTokenRetrieve: data: %s", buffer);
 #endif
 	      /* search for the token and make sure the trailing character */
 	      /* is a " " or "=" to make sure the entire token was found */
-	      if ((strstr (buffer, token) != (char) NULL) && 
-		   ((buffer[strlen(token)] == '=') || (buffer[strlen(token)] == ' '))) 
+	      if ((strstr (buffer, token) != (char) NULL) &&
+		   ((buffer[strlen(token)] == '=') || (buffer[strlen(token)] == ' ')))
 		{		/* cut off the '=' and send it back */
 		  if (strstr (buffer, "\"") == (char) NULL)
 		    {
@@ -344,7 +377,7 @@ ConfigTokenRetrieve (char *token, char *configToken)
 		      count++;
 		    }
 
-#ifdef DEBUG
+#ifdef DEBUG2
 		  Log ("debug: ConfigTokenRetrieved token: %s\n", configToken);
 #endif
 		  configToken[MAXBUF - 1] = '\0';
@@ -360,13 +393,12 @@ ConfigTokenRetrieve (char *token, char *configToken)
 }
 
 
-
-
 /* This will bind a socket to a port. It works for UDP/TCP */
-int 
-BindSocket (int sockfd, struct sockaddr_in client,
-		  struct sockaddr_in server, int port)
+int
+BindSocket (int sockfd, int port)
 {
+ struct sockaddr_in server;
+
 #ifdef DEBUG
   Log ("debug: BindSocket: Binding to port: %d\n", port);
 #endif
@@ -393,9 +425,8 @@ BindSocket (int sockfd, struct sockaddr_in client,
     }
 }
 
-
 /* Open a TCP Socket */
-int 
+int
 OpenTCPSocket (void)
 {
   int sockfd;
@@ -412,7 +443,7 @@ OpenTCPSocket (void)
 
 
 /* Open a UDP Socket */
-int 
+int
 OpenUDPSocket (void)
 {
   int sockfd;
@@ -427,43 +458,9 @@ OpenUDPSocket (void)
     return (sockfd);
 }
 
-#ifdef SUPPORT_STEALTH
-/* Open a RAW TCPSocket */
-int 
-OpenRAWTCPSocket (void)
-{
-  int sockfd;
-
-#ifdef DEBUG
-  Log ("debug: OpenRAWTCPSocket: opening RAW TCP socket\n");
-#endif
-
-  if ((sockfd = socket (AF_INET, SOCK_RAW, IPPROTO_TCP)) < 0)
-    return (ERROR);
-  else
-    return (sockfd);
-}
-
-/* Open a RAW UDP Socket */
-int 
-OpenRAWUDPSocket (void)
-{
-  int sockfd;
-
-#ifdef DEBUG
-  Log ("debug: OpenRAWUDPSocket: opening RAW UDP socket\n");
-#endif
-
-  if ((sockfd = socket (AF_INET, SOCK_RAW, IPPROTO_UDP)) < 0)
-    return (ERROR);
-  else
-    return (sockfd);
-}
-#endif
-
 /* This will use a system() call to change the route of the target host to */
 /* a dead IP address on your LOCAL SUBNET. */
-int 
+int
 KillRoute (char *target, int port, char *killString, char *detectionType)
 {
   char cleanAddr[MAXBUF], commandStringTemp[MAXBUF];
@@ -527,7 +524,7 @@ KillRoute (char *target, int port, char *killString, char *detectionType)
 
 
 /* This will run a specified command with TARGET as the option if one is given. */
-int 
+int
 KillRunCmd (char *target, int port, char *killString, char *detectionType)
 {
   char cleanAddr[MAXBUF], commandStringTemp[MAXBUF];
@@ -584,7 +581,7 @@ KillRunCmd (char *target, int port, char *killString, char *detectionType)
 /* this function will drop the host into the TCP wrappers hosts.deny file to deny */
 /* all access. The drop route metod is preferred as this stops UDP attacks as well */
 /* as TCP. You may find though that host.deny will be a more permanent home.. */
-int 
+int
 KillHostsDeny (char *target, int port, char *killString, char *detectionType)
 {
 
@@ -647,7 +644,7 @@ KillHostsDeny (char *target, int port, char *killString, char *detectionType)
 
 
 /* check if the host is already blocked */
-int 
+int
 IsBlocked (char *target, char *filename)
 {
   FILE *input;
@@ -661,7 +658,7 @@ IsBlocked (char *target, char *filename)
 #endif
   if ((input = fopen (filename, "r")) == NULL)
   {
-	Log ("adminalert: ERROR: Cannot open blocked file: %s for reading. Will create.\n", filename);
+	Log ("adminalert: ERROR: Cannot open blocked file: %s for reading.\n", filename);
 	return (FALSE);
   }
 
@@ -671,7 +668,7 @@ IsBlocked (char *target, char *filename)
 	{
 		for(count = 0; count < strlen(ipOffset); count++)
 		{
-			if((isdigit(ipOffset[count])) || 
+			if((isdigit(ipOffset[count])) ||
 				(ipOffset[count] == '.'))
 			{
 				tempBuffer[count] = ipOffset[count];
@@ -700,6 +697,8 @@ IsBlocked (char *target, char *filename)
   return (FALSE);
 }
 
+
+
 /*********************************************************************************
 * String substitute function
 *
@@ -717,7 +716,7 @@ int SubstString (const char *replace, const char *find, const char *target, char
 int replaceCount = 0, count = 0, findCount = 0, findLen=0, numberOfSubst=0;
 char tempString[MAXBUF], *tempStringPtr;
 
-#ifdef DEBUG
+#ifdef DEBUG2
   Log ("debug: SubstString: Processing string: %s %d", target, strlen(target));
   Log ("debug: SubstString: Processing search text: %s %d", replace, strlen(replace));
   Log ("debug: SubstString: Processing replace text: %s %d", find, strlen(find));
@@ -726,15 +725,12 @@ char tempString[MAXBUF], *tempStringPtr;
 	/* string not found in target */
   	if (strstr (target, find) == (char) NULL)
 	{
-		strncpy(result, target, MAXBUF);
-		#ifdef DEBUG
-  			Log ("debug: SubstString: Result string: %s", result);
-		#endif
+		SafeStrncpy(result, target, MAXBUF);
+#ifdef DEBUG2
+		Log ("debug: SubstString: Result string: %s", result);
+#endif
     		return (numberOfSubst);
 	}
-	/* String/victim/target too long */
-  	else if ((strlen (target)) + (strlen(replace)) + (strlen(find)) > MAXBUF)
-    		return (ERROR);
 
 	memset(tempString, '\0', MAXBUF);
 	memset(result, '\0', MAXBUF);
@@ -757,8 +753,8 @@ char tempString[MAXBUF], *tempStringPtr;
 		}
 	}
 
-strncpy(result, tempString, MAXBUF);
-#ifdef DEBUG
+SafeStrncpy(result, tempString, MAXBUF);
+#ifdef DEBUG2
   Log ("debug: SubstString: Result string: %s", result);
 #endif
 return(numberOfSubst);
@@ -767,7 +763,7 @@ return(numberOfSubst);
 
 
 /* This function checks a config variable for a numerical flag and returns it */
-int 
+int
 CheckFlag (char *flagName)
 {
   char configToken[MAXBUF];
@@ -787,35 +783,4 @@ CheckFlag (char *flagName)
       return (FALSE);
     }
 }
-
-
-/* snprintf for NEXTSTEP (others??) */
-/* I don't know where this code came from and I don't */
-/* warrant its effectiveness. CHR */
-
-#ifdef HAS_NO_SNPRINTF
-int 
-snprintf (char *str, size_t n, char const *fmt,...)
-{
-  va_list ap;
-  FILE f;
-
-  if (n > MAXBUF)
-    {
-      n = MAXBUF;
-    }
-  va_start (ap, fmt);
-  f._file = EOF;
-  f._flag = _IOWRT | _IOSTRG;
-  f._base = f._ptr = str;
-  f._bufsiz = f._cnt = n ? n - 1 : 0;
-  (void) vfprintf (&f, fmt, ap);
-  va_end (ap);
-  if (n)
-    {
-      *f._ptr = '\0';
-    }
-  return (f._ptr - str);
-}
-#endif
 

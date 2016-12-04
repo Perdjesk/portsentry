@@ -1,4 +1,4 @@
-$Id: CREDITS,v 1.31 2003/05/23 16:15:45 crowland Exp crowland $
+$Id: CREDITS,v 1.32 2002/03/27 22:19:01 crowland Exp crowland $
 
 Thanks to the following people who offered testing and bug fixes/suggestions. I 
 apologize if I've forgotten anyone. (No particular order on this list either):
@@ -172,3 +172,18 @@ Paul T. Kooros <kooros@titan.srrb.noaa.gov> - Sent in some code formatting issue
 were resolved. 
 
 Justin Pettit <jpettit@psionic.com> - Solaris fixes, proofreading, and lots of other stuff.
+
+Jeremy Fowler - Multiple feature and bug fixes including $SCAN$ type 
+reporting and rewrite of a couple of functions for better efficiency and reduction of 
+code. Consolidated and reduced redundant code in several places. Thanks Jeremy!
+
+
+Version 2.0 Contributors
+
+
+Jeremy Fowler - Sent in a load of patches to reduce code and add new 
+features. These are being applied as the product goes into Beta. Thanks 
+again Jeremy.
+
+
+

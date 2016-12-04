@@ -1,0 +1,15 @@
+$Id: KNOWNBUGS,v 1.8 2002/04/08 19:31:49 crowland Exp crowland $
+
+Known bugs in this beta:
+
+- Port ranges cannot be defined.
+- Signal handler is not ignoring signals
+- Existing ports are not ignored on startup
+- Only supports ethernet network type
+- Does not determine local interface address automatically
+- BPF filter dumps core on some platforms because filter list is too long 
+sometimes. (OpenBSD)
+- libpcap sees packets even after packet filter is working. This makes the "already blocked host...ignoring" message appear after host is blocked.
+- Lots of warnings under BSD platforms during compile.
+- Higher false alarm rates. SmartVerify option is not stopping all instances of bogus 
+alarms.

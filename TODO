@@ -1,0 +1,25 @@
+$Id: TODO,v 1.13 2002/04/08 20:13:18 crowland Exp crowland $
+
+- Put in Jeremy Fowler's Changes
+- Put back in $SCAN$ token
+- Put in IP, TCP, UDP, ICMP header checks
+- Put in fragment checking/handling
+- Put in port freeze option
+- Reduce Kill* functions into single unit
+- Eliminate static arrays and deploy dynamic string functions
+- Put in attackalert script
+- Test against unused bit scans
+- Test SmartVerify and put in checks on TCP_PORTS/UDP_PORTS init section
+- Sees own packets on outbound despite BPF filters
+- SignalCatcher is hosed. Makes daemon hang on HUP
+- Port Parser needs to have ADVANCED_MODE added again
+- Determine local interface being monitored and drop into BPF filter to ignore dynamically
+- fork() off main reaction/response loop or convert to shared memory model to improve 
+performance.
+- format code for consistency. Indents are mixed spaces and tabs because 
+different editors were used.
+- Put back in "Classic" modes???
+- Get rid of the options in portsentry_config.h. They can all move into 
+the .conf file
+- Put in port to probable probe name translation for logging.
+

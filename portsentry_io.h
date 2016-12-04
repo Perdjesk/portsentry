@@ -1,37 +1,42 @@
 /************************************************************************/
 /*                                                                      */
-/* PortSentry								*/
+/* Psionic PortSentry							*/
 /*                                                                      */
 /* Created: 10-12-1997                                                  */
-/* Modified: 05-23-2003                                                 */
+/* Modified: 03-05-2002                                                 */
 /*                                                                      */
-/* Send all changes/modifications/bugfixes to:				*/
-/* craigrowland at users dot sourceforge dot net    			*/
+/* Send all changes/modifications/bugfixes to sentrysupport@psionic.com */
 /*                                                                      */
 /*                                                                      */
-/* This software is Copyright(c) 1997-2003 Craig Rowland	        */
+/* This software is Copyright(c) 1997-2002 Psionic Technologies, Inc.   */
 /*                                                                      */
-/* This software is covered under the Common Public License v1.0	*/
-/* See the enclosed LICENSE file for more information.			*/
-/* $Id: portsentry_io.h,v 1.17 2003/05/23 17:41:46 crowland Exp crowland $ */
+/* Disclaimer:                                                          */
+/*                                                                      */
+/* All software distributed by Psionic Technologies is distributed 	*/
+/* AS IS and carries NO WARRANTY or GUARANTEE OF ANY KIND. End users of */
+/* the software acknowledge that they will not hold Psionic Software	*/
+/* liable for failure or non-function of the software product. YOU ARE 	*/
+/* USING THIS PRODUCT AT YOUR OWN RISK.					*/
+/*                                                                      */
+/* Licensing restrictions apply. Commercial re-sell is prohibited under */
+/* certain conditions. See the license that came with this package or 	*/
+/* visit http://www.psionic.com for more information. 			*/
+/*                                                                      */
+/* $Id: portsentry_io.h,v 1.17 2002/03/06 04:53:43 crowland Exp crowland $ */
 /************************************************************************/
 
-
 /* prototypes */
-int WriteBlocked (char *, char *, int, char *, char *, char *);
 void Log (char *,...);
-void Exit (int);
+void ExitNow (int);
 void Start (void);
+void PrintStats(void);
 int DaemonSeed (void);
 int NeverBlock (char *, char *);
+int WriteBlocked (char *, char *, char *, char *, int , int, char *, char *);
 int CheckConfig (void);
+int BindSocket (int, int);
 int OpenTCPSocket (void);
 int OpenUDPSocket (void);
-#ifdef SUPPORT_STEALTH
-	int OpenRAWTCPSocket (void);
-	int OpenRAWUDPSocket (void);
-#endif
-int BindSocket (int, struct sockaddr_in, struct sockaddr_in, int);
 int KillRoute (char *, int, char *, char *);
 int KillHostsDeny (char *, int, char *, char *);
 int KillRunCmd (char *, int, char *, char *);
@@ -40,3 +45,4 @@ int IsBlocked (char *, char *);
 int SubstString (const char *, const char *, const char *, char *);
 int CheckFlag (char *);
 int CompareIPs(char *, char *, int);
+void SignalCatcher(int);

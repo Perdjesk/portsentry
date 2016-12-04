@@ -1,7 +1,7 @@
-PortSentry Errata
-=-=-=-=-=-=-=-=-=
+Psionic PortSentry Errata
+=-=-=-=-=-=-=-=-=-=-=-=-=
 
-$Id: README.methods,v 1.15 2003/05/23 17:42:28 crowland Exp crowland $
+$Id: README.methods,v 1.16 2002/04/08 16:49:12 crowland Exp crowland $
 
 
 This is file contains some answers to questions we've been asked, or you
@@ -44,14 +44,15 @@ purposes or for full remote access.
 Mid Range - Ports: 500-1024
 
 These ports contain a host of services commonly looked for by attackers (rsh,
-rlogin, rexec, mountd). 
+rlogin, rexec, lpd, mountd). 
 
 Mid-High Range - Ports: 1024-32768
 
 These ports contain a wealth of services such as X-Windows, IRC servers, 
-router serial ports, MUDs and others. One particular port (31337) is
-sometimes used as a backdoor, and is used by the program "netcat" to 
-facilitate UDP (yes that's UDP) scanning of the target host. 
+router serial ports, MUDs and others. One particular port (31337) is used
+by the program "netcat" to facilitate UDP (yes that's UDP) scanning of the
+target host. Other ports in this range are commonly used for trojan horses
+for communications.
 
 High Range - Ports 32769-65535
 
@@ -61,7 +62,7 @@ present a copy of itself listening in the 327XX range of ports. This allows
 an attacker to use a modified portmapper probe to hop filters and dump
 RPC services on the target. Some scans target this range specifically.
 The port 49724 is used by the scanning tool "nmap" to do UDP scanning
-much like netcat as well. 
+much like netcat as well.
 
 -------------------------------------------------------------------------------
 
@@ -74,7 +75,7 @@ of the portmapper, a feature found in Wietse Venema's portmapper version.
 Low Range - Ports: 1-20
 
 As above, some scanners do sequential scanning starting at 1 and working
-up. These ports will allow the PortSentry to respond rapidly to a scan before 
+up. These ports will allow the PortSentry to respond rapidly to a scan before
 any real services are revealed.
 
 Low-Mid Range - Ports: 20-500
@@ -96,37 +97,27 @@ Back Orifice (31337).
 
 High Range - Ports 32769-65535
 
-These ports are generally not used, again though, Solaris has a habit of 
+These ports are generally not used, again though, Solaris has a habit of
 concentrating services in the 327XX range. Waiting here for connections
-will find people probing for these services quickly. People shouldn't be 
-here unless portmapper sent them, and since we don't register with 
+will find people probing for these services quickly. People shouldn't be
+here unless portmapper sent them, and since we don't register with
 portmapper they shouldn't know about us unless they are up to no good.
 
 
-Why should I be careful about running the PortSentry program? 
+Why should I be careful about running the PortSentry program?
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-Because you have the potential of presenting information to an attacker
-that may tempt them to return at a later date. If you show a person
-a load of ports open then it may pique their curiosity. If they return
-they may find a real problem with your system that the PortSentry cannot
-defend. Additionally you may do something un-professional like present
-a banner to them that says "You k-rad HaX0r d00d you'll NeVEr brek
-r00t heRe!!" and this then makes it a challenge. This is something 
-to consider. 
-
-With UDP/stealth scan detection, there is the possibility that an
+With stealth scan detection, there is the possibility that an
 attacker can flood your host with bogus packets causing PortSentry to
 continuously activate and write out warnings to your log. This can create
-a denial of service attack that you should be aware of. We do not recommend 
-running UDP/stealth scan detection on an Internet host that is
-high-profile and subject to frequent abuse. 
+a denial of service attack that you should be aware of. We do not recommend
+running stealth scan detection on an Internet host that is high-profile
+and subject to frequent abuse.
 
 It is our experience though that spoofed scans are not an issue and we
-recommend people use auto-blocking knowing that %99.9 of the time it 
-will block a scan. If you run into a denial of service problem on 
-your host, just go back to "classic" TCP mode and the problem will go away.
+recommend people use auto-blocking knowing that %99.9 of the time it
+will block a scan.
 
-Again though, we strongly feel that the benefits of blocking hosts 
+Again though, we strongly feel that the benefits of auto-blocking hosts
 *far outweighs* the limited risk you take by having auto-blocking turned on.
 

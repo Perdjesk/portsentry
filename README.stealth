@@ -1,8 +1,4 @@
-*************************************************************************
-	STEALTH MODE ONLY SUPPORTED FOR LINUX SYSTEMS ONLY
-*************************************************************************
-
-$Id: README.stealth,v 1.9 2000/09/27 04:17:23 crowland Exp crowland $
+$Id: README.stealth,v 1.11 2002/04/08 16:49:14 crowland Exp crowland $
 
 Stealth Scans
 =-=-=-=-=-=-=
@@ -26,8 +22,8 @@ http://www.insecure.org
 A few notes on the implementation:
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-Stealth scan detection mode one
--------------------------------
+Stealth scan detection mode [BETA]
+---------------------------
 
 This mode will monitor ports just like the original version of PortSentry. The
 primary difference being that it does not bind to anything. An attacker
@@ -35,10 +31,6 @@ still has to hit a tripwired port to activate the sensor though.
 To prevent other issues, this scan mode will not react if the ACK flag of
 the TCP packet is set. This prevents causing alarms on "established"
 connections that happen to take one of your high ports temporarily.
-
-
-Stealth scan detection mode two
--------------------------------
 
 ** Advanced Logic Mode ** - PortSentry is intelligent about how it monitors   
 ports. For some protocols such as FTP the client actually opens up ports  
@@ -53,8 +45,7 @@ rudimentary stateful inspection engine.
 Trying it out:
 --------------
 
-1) Fire up PortSentry in any one of the stealth modes (-stcp, -atcp, -sudp,
--audp). 
+1) Fire up PortSentry
 
 2) Take a program such as netcat and bind up to a protected port on the
 host (i.e. "nc -p 143 -l").
@@ -74,14 +65,14 @@ UDP "stealth" scan detection
 ----------------------------
 
 The UDP flags are not really "stealth" scan detection in the traditional
-sense, but acts like the other TCP stealth scan options. Simply put, it
-doesn't bind ports but uses a raw socket. The same warnings apply.
+sense, but acts like the other TCP stealth scan options. The same warnings apply.
 
-We don't suggest using Advanced mode UDP stealth scan detection unless you
+We don't suggest using large ranges for UDP stealth scan detection unless you
 know what you are doing. It is very good if you know enough to
 exclude broadcast traffic (you may want to run it in non-blocking mode
 to see what alarms are generated and then set this up). The ports that
-generally cause this are route (520) and NetBIOS (137/138).
+generally cause this are route (520), NetBIOS (137/138), and DHCP/BOOTP 
+(67/68).
 
 General WARNINGS and CAUTIONS
 -----------------------------
@@ -139,18 +130,15 @@ this writing) you are probably OK if you look at all the facts.
 
 So where do we stand on the issue??
 
-Well we use full connect mode for any external host, but this is because 
-some of the hosts we watch are high-profile and we don't want to risk
-people playing games with us. For internal hosts though we will use the 
-stealth modes because we want to know immediately of a probe; forged or 
+We don't turn on auto-blocking for our higher-profile systems because we don't
+like having people play games with us. For internal hosts though we will use the 
+stealth mode blocking because we want to know immediately of a probe; forged or 
 not. 
 
 Now the conservative side would like to add a few things. We would like to
 say that the initial version of this tool only did full connect TCP scan
 detection. This was done deliberately to prevent such attacks from
-possibly occurring. Because of this, we only recommend the full connect
-mode (-tcp) for deployment on critical hosts or hosts subject to frequent
-abuse...
+possibly occurring. 
 
 ...and the band played on...
 
@@ -161,4 +149,4 @@ virtual-world philosophy. Basically, we accept the fact that people
 are capable of making their own decisions when given adequate information. 
 Therefore, you are responsible for your own actions. We have given you 
 all the information you should need to decide what mode to use the tool. 
-So don't complain if something bad happens, because it is your choice. 
+So don't complain if something bad happens because it is your choice. 

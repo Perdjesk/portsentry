@@ -1,304 +1,195 @@
+$Id: LICENSE,v 1.9 2002/04/08 21:46:05 crowland Exp crowland $
+
+END USER SERVICE AGREEMENT FOR PSIONIC TECHNOLOGIES
+
+NOTICE TO END USER:
+
+THIS IS A BINDING CONTRACT. BY DOWNLOADING OR USING THIS SOFTWARE YOU ACCEPT
+ALL THE TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE WITH THE
+TERMS AND CONDITIONS OF THIS AGREEMENT, DO NOT USE THE SOFTWARE AND REMOVE
+AND DESTROY ANY FILES YOU HAVE DOWNLOADED.
+
+This Psionic Technologies, Inc. ("Psionic Technologies") End User Service
+Agreement ("Agreement") is a legal agreement between you (either an
+individual or an entity) ("You" or "Your") and Psionic Technologies
+(formerly "Psionic Software") and sets forth the terms and conditions
+governing Your use of Psionic Technologies' proprietary services and
+products, in object code, including updates and upgrades, if any, provided
+by Psionic Technologies, and related explanatory materials and documentation
+(collectively, the "Software").
+
+The Software is being provided to you free of charge. Therefore, You agree
+to assume all risks associated with the use or inability to use the
+Software.
+
+The Software is protected by copyright laws and international treaties, as
+well as other intellectual property laws and treaties.
+
+1. GRANT OF LICENSE. Subject to the terms and conditions of this Agreement,
+Psionic Technologies hereby grants to You, and You accept, a nonexclusive,
+royalty-free, perpetual and nontransferable license to use only for Your
+internal use. You agree that You will not assign, sublicense, transfer,
+pledge, lease, rent, or share Your rights under this Agreement. You may make
+unlimited archival copies of the Software, provided that You affix to such copy
+all copyright, confidentiality, and proprietary notices that appear on the
+original. Except as authorized under this paragraph, no copies of the
+Software or any portions thereof may be made by You or any person under Your
+authority or control. Psionic Technologies reserves all rights not expressly
+granted to You under this Agreement.
+
+2. LICENSE RESTRICTIONS. Notwithstanding any provisions in this Agreement to
+the contrary, You may not (a) modify or make derivative works of
+the Software for non-internal use, except to the extent inherent in the
+use of the Software, (b) reproduce or use the Software except as expressly
+permitted herein. You may redistribute the Software in its entirety as long as
+you include a copy of this Agreement with the redistributed Software. Since
+some of the Software is distributed in source code form, no part of the Software,
+including the source code and object code, may be copied or used in any other
+software or service where a fee is charged without commercial licensing.
+Notwithstanding the above, this software may be distributed in any freely available
+operating system package provided that a fee is not charged for the software's
+functionality or feature directly.
+
+3. PROPRIETARY RIGHTS. The Software is licensed, not sold. All rights, title
+and interests in the Software (including but not limited to any images,
+photographs, animations, video, audio, music, text and "applets"
+incorporated into the Software), and any copies of the Software are owned by
+Psionic Technologies. You may not remove the copyright or other proprietary
+notices from the Software.
+
+4. CONFIDENTIALITY. The Software contains trade secrets and other
+confidential and proprietary information of Psionic Technologies and its
+licensors. You agree to hold in confidence, not disclose (except with
+Psionic Technologies' express written consent) and not use (except as
+expressly provided herein) the Software, and ensure that there is no breach,
+compromise or violation by Your employees, consultants, or independent
+contractors of such confidentiality obligations and Psionic Technologies'
+trade secrets. You recognize and agree that there is no adequate remedy at
+law for a breach of this Section 4, that such breach would irreparably harm
+Psionic Technologies for which monetary damages would not be an adequate
+remedy and that Psionic Technologies is entitled to equitable relief
+(including, without limitation, injunctions) with respect to any such breach
+or potential breach in addition to any other remedies.
+
+5. NO WARRANTY. ANY USE BY YOU OF THE SOFTWARE IS AT YOUR OWN RISK. THE
+SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. PSIONIC
+TECHNOLOGIES IS NOT OBLIGATED TO PROVIDE ANY SUPPORT FOR THE SOFTWARE OR
+PATCHES, UPDATES OR UPGRADES TO THE SOFTWARE. PSIONIC TECHNOLOGIES AND ITS
+LICENSORS DISCLAIM ALL WARRANTIES OF ANY KIND, EITHER EXPRESS, STATUTORY OR
+IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY IMPLIED WARRANTIES OF TITLE,
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. SOME
+JURISDICTIONS DO NOT ALLOW THE EXCLUSION OF IMPLIED WARRANTIES SO THE ABOVE
+EXCLUSION MAY NOT APPLY TO YOU. TO THE EXTENT THAT SUCH EXCLUSIONS DO NOT
+APPLY TO YOU, ALL WARRANTIES REQUIRED BY LAW SHALL EXTEND FOR ONLY SUCH
+PERIOD AS REQUIRED BY LAW OR THIRTY (30) DAYS FROM YOUR INITIAL ACCEPTANCE
+OF THESE TERMS, WHICHEVER PERIOD IS SHORTER. THE SOFTWARE IS NOT DESIGNED OR
+LICENSED FOR USE IN ANY NUCLEAR, AVIATION, MASS TRANSIT, MEDICAL APPLICATION
+OR IN ANY OTHER INHERENTLY DANGEROUS APPLICATIONS. YOU WARRANT THAT YOU WILL
+NOT USE THE SOFTWARE FOR THESE PURPOSES.
+
+
+6. NO LIABILITY FOR DAMAGES. In no event shall Psionic Technologies or its
+licensors be liable for any damages whatsoever (including, without
+limitation, incidental, direct, indirect, special and consequential damages,
+damages for loss of business profits, business interruption, loss of
+business information, loss or corruption of data, or other pecuniary loss),
+whether based on contract, tort (including negligence), strict liability or
+other legal or equitable theory, arising out of the use or inability to use
+the Software or arising out of or related to this Agreement, even if advised
+of the possibility of such damages. BECAUSE SOME JURISDICTIONS DO NOT ALLOW
+THE EXCLUSION OR LIMITATION OF LIABILITY FOR CONSEQUENTIAL OR INCIDENTAL
+DAMAGES, THE ABOVE LIMITATION MAY NOT APPLY. TO THE EXTENT THAT SUCH
+LIMITATION DOES NOT APPLY TO YOU, IN NO EVENT SHALL PSIONIC TECHNOLOGIES'
+AND ITS LICENSOR'S AGGREGATE LIABILITY ARISING OUT OF OR RELATING TO THIS
+AGREEMENT, INCLUDING, BUT NOT LIMITED TO THE USE OF OR INABILITY TO USE THE
+SOFTWARE, EXCEED $100.00.
+
+7. YOUR INDEMNITIES. You will indemnify and hold Psionic Technologies
+harmless from all actual liabilities, damages, losses, costs and expenses
+(including, but not limited to, attorneys' fees) incurred by Psionic
+Technologies to the extent arising out of any legal action based on (a) any
+breach of this Agreement by You; (b) any claim by a third party that Psionic
+Technologies, due to Your use of the Software, is liable for contributory
+infringement of a copyright, patent, trade secret, or other proprietary
+right of a third party, provided that this indemnity will not apply to any
+claim to the extent the Software as delivered by Psionic Technologies
+infringes on a proprietary right of a third party; or (c) any claim by a
+third party that Psionic Technologies, due to Your use of or inability to
+use the Software, is liable to a third party in tort or under statutory
+liability, including, without limitation, defamation, invasion of privacy,
+or similar theories of law.
+
+8. TERMINATION. This Agreement shall remain effective until terminated by
+either party. Psionic Technologies reserves the right, at its sole
+discretion, to terminate this Agreement immediately if You have breached the
+terms and conditions hereof or of Your Psionic Technologies and Service
+License Agreement or Web Site User Agreement. You may terminate this
+Agreement at any time by ceasing to use the Software. Upon termination of
+this Agreement for any reason, You shall cease using the Software and remove
+and destroy all copies of the Software in Your possession. The provisions of
+Sections 3, 4, 5, 6, 7, 8, 9, 11 and 14 shall survive termination.
+
+9. GOVERNING LAW. The parties expressly agree that the rights and
+obligations of each will be governed by the laws of the State of Texas
+excluding its choice of law rules. You hereby irrevocably consent to the
+nonexclusive jurisdiction and venue of the federal and state courts located
+in Travis County, Texas, with respect to any dispute arising out or related
+to this Agreement and agree not to commence or prosecute any claim or
+proceeding relating to any such dispute other than in the aforementioned
+courts. The parties expressly agree that the rights and obligations of each
+will not be governed by the U.N. Convention on Contracts for the
+International Sale of Goods.
+
+10. THIRD PARTY BENEFICIARIES. You are hereby notified that persons and
+entities which have licensed software to Psionic Technologies for inclusion
+in the Software are third party beneficiaries to this Agreement as it
+applies to their respective software included in the Software.
+
+11. EXPORT. You represent and warrant that you are entitled under United
+States export laws and regulations to obtain a copy of and use the Software
+pursuant to the terms of this Agreement. You agree to comply with all export
+laws and restrictions and regulations of the United States Department of
+Commerce or other United States agency or authority, and not to directly or
+indirectly export, or allow the export or re-export of the Software or
+derivatives of the Software or any copy or any direct product thereof in
+violation of any such restrictions, laws or regulations, or without all
+required licenses and authorizations.
+
+12. US GOVERNMENT RESTRICTED RIGHTS. If You are an agency, department, or
+other entity of the United States Government, the use, duplication,
+reproduction, release, modification, disclosure or transfer of the Software,
+manuals, or any technical specifications, or any related documentation of
+any kind, including technical data ("Software and documentation"), is
+restricted in accordance with Federal Acquisition Regulation ("FAR") 12.212
+for civilian agencies and Defense Federal Acquisition Regulation Supplement
+("DFARS") 227.7202 for military agencies. The Software and documentation is
+commercial computer software and commercial computer software documentation.
+The use of the Software and documentation is further restricted in
+accordance with the terms of this Agreement, or any modification thereto.
+
+13. NO ASSIGNMENT. You may not assign or otherwise transfer in whole or in
+part or in any manner any rights, obligations, or any interest in or under
+this Agreement without Psionic Technologies' prior written consent and any
+attempted assignment will be void. A merger or other acquisition by a third
+party will be treated as an assignment.
+
+14. MISCELLANEOUS. If any provision of this Agreement shall be held illegal
+or unenforceable, that provision shall be limited or eliminated to the
+minimum extent necessary so that this Agreement shall otherwise remain in
+full force and effect, and enforceable. Any waivers or amendments shall be
+effective only if made in writing. This Agreement is the complete and
+exclusive understanding between You and Psionic Technologies and supersedes
+and cancels all prior and contemporaneous written and oral agreements and
+communications relating to the subject matter of this Agreement. Psionic
+Technologies' failure to enforce any provision of this Agreement shall not
+be deemed a waiver of such provision.
+
+15. NOTICE. Should You have any questions concerning this Agreement, or if
+You desire to contact Psionic Technologies for any reason, please write to
+Psionic Technologies at Psionic Technologies, Inc., 7501B North Capital of
+Texas Hwy, Austin, Texas 78731 U.S.A or send e-mail to: contracts@psionic.com.
+
+Psionic Technologies is a trademark of Psionic Technologies, Inc.
+
+© 2002, Psionic Technologies, Inc. All rights reserved.
 
-                           Common Public License - v 1.0
-
-
-
-            THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF
-            THIS COMMON PUBLIC LICENSE ("AGREEMENT"). ANY USE,
-            REPRODUCTION OR DISTRIBUTION OF THE PROGRAM CONSTITUTES
-            RECIPIENT'S ACCEPTANCE OF THIS AGREEMENT.
-
-
-            1. DEFINITIONS
-
-
-            "Contribution" means:
-
-
-                   a) in the case of the initial Contributor, the
-                   initial code and documentation distributed under
-                   this Agreement, and
-
-                   b) in the case of each subsequent Contributor:
-
-
-                   i) changes to the Program, and
-
-
-                   ii) additions to the Program;
-
-
-                   where such changes and/or additions to the Program
-                   originate from and are distributed by that
-                   particular Contributor. A Contribution 'originates'
-
-                   from a Contributor if it was added to the Program
-                   by such Contributor itself or anyone acting on such
-                   Contributor's behalf. Contributions do not include
-
-                   additions to the Program which: (i) are separate
-                   modules of software distributed in conjunction with
-
-                   the Program under their own license agreement, and
-                   (ii) are not derivative works of the Program. 
-
-            "Contributor" means any person or entity that distributes
-            the Program.
-
-            "Licensed Patents " mean patent claims licensable by a
-            Contributor which are necessarily infringed by the use or
-            sale of its Contribution alone or when combined with the
-            Program. 
-            
-            "Program" means the Contributions distributed in
-            accordance with this Agreement.
-
-            "Recipient" means anyone who receives the Program under
-            this Agreement, including all Contributors.
-
-
-            2. GRANT OF RIGHTS
-
-
-                   a) Subject to the terms of this Agreement, each
-                   Contributor hereby grants Recipient a
-                   non-exclusive, worldwide, royalty-free copyright
-                   license to reproduce, prepare derivative works of,
-                   publicly display, publicly perform, distribute and
-                   sublicense the Contribution of such Contributor, if
-                   any, and such derivative works, in source code and
-                   object code form.
-
-                   b) Subject to the terms of this Agreement, each
-                   Contributor hereby grants Recipient a
-                   non-exclusive, worldwide, royalty-free patent
-                   license under Licensed Patents to make, use, sell,
-                   offer to sell, import and otherwise transfer the
-                   Contribution of such Contributor, if any, in source
-                   code and object code form. This patent license
-                   shall apply to the combination of the Contribution
-                   and the Program if, at the time the Contribution is
-                   added by the Contributor, such addition of the
-                   Contribution causes such combination to be covered
-                   by the Licensed Patents. The patent license shall
-                   not apply to any other combinations which include
-                   the Contribution. No hardware per se is licensed
-                   hereunder. 
-
-                   c) Recipient understands that although each
-                   Contributor grants the licenses to its
-                   Contributions set forth herein, no assurances are
-                   provided by any Contributor that the Program does
-                   not infringe the patent or other intellectual
-                   property rights of any other entity. Each
-                   Contributor disclaims any liability to Recipient
-                   for claims brought by any other entity based on
-                   infringement of intellectual property rights or
-                   otherwise. As a condition to exercising the rights
-                   and licenses granted hereunder, each Recipient
-                   hereby assumes sole responsibility to secure any
-                   other intellectual property rights needed, if any.
-
-                   For example, if a third party patent license is
-                   required to allow Recipient to distribute the
-                   Program, it is Recipient's responsibility to
-                   acquire that license before distributing the
-                   Program.
-
-                   d) Each Contributor represents that to its
-                   knowledge it has sufficient copyright rights in its
-                   Contribution, if any, to grant the copyright
-                   license set forth in this Agreement.
-
-
-            3. REQUIREMENTS
-
-
-            A Contributor may choose to distribute the Program in
-            object code form under its own license agreement, provided
-            that:
-
-                   a) it complies with the terms and conditions of
-                   this Agreement; and
-
-                   b) its license agreement:
-
-                   i) effectively disclaims on behalf of all
-
-                   Contributors all warranties and conditions, express
-                   and implied, including warranties or conditions of
-                   title and non-infringement, and implied warranties
-                   or conditions of merchantability and fitness for a
-                   particular purpose;
-
-                   ii) effectively excludes on behalf of all
-                   Contributors all liability for damages, including
-                   direct, indirect, special, incidental and
-                   consequential damages, such as lost profits;
-
-                   iii) states that any provisions which differ from
-                   this Agreement are offered by that Contributor
-                   alone and not by any other party; and
-
-                   iv) states that source code for the Program is
-                   available from such Contributor, and informs
-                   licensees how to obtain it in a reasonable manner
-                   on or through a medium customarily used for
-                   software exchange.
-
-            When the Program is made available in source code form:
-
-                   a) it must be made available under this Agreement;
-                   and
-
-                   b) a copy of this Agreement must be included with
-                   each copy of the Program. 
-
-            Contributors may not remove or alter any copyright notices
-            contained within the Program. 
-
-            Each Contributor must identify itself as the originator of
-            its Contribution, if any, in a manner that reasonably
-            allows subsequent Recipients to identify the originator of
-            the Contribution. 
-
-
-            4. COMMERCIAL DISTRIBUTION
-
-
-            Commercial distributors of software may accept certain
-            responsibilities with respect to end users, business
-            partners and the like. While this license is intended to
-            facilitate the commercial use of the Program, the
-            Contributor who includes the Program in a commercial
-            product offering should do so in a manner which does not
-            create potential liability for other Contributors.
-            Therefore, if a Contributor includes the Program in a
-            commercial product offering, such Contributor ("Commercial
-            Contributor") hereby agrees to defend and indemnify every
-            other Contributor ("Indemnified Contributor") against any
-            losses, damages and costs (collectively "Losses") arising
-            from claims, lawsuits and other legal actions brought by a
-            third party against the Indemnified Contributor to the
-            extent caused by the acts or omissions of such Commercial
-            Contributor in connection with its distribution of the
-
-            Program in a commercial product offering. The obligations
-            in this section do not apply to any claims or Losses
-            relating to any actual or alleged intellectual property
-            infringement. In order to qualify, an Indemnified
-            Contributor must: a) promptly notify the Commercial
-            Contributor in writing of such claim, and b) allow the
-
-            Commercial Contributor to control, and cooperate with the
-            Commercial Contributor in, the defense and any related
-            settlement negotiations. The Indemnified Contributor may
-            participate in any such claim at its own expense.
-
-            For example, a Contributor might include the Program in a
-            commercial product offering, Product X. That Contributor
-            is then a Commercial Contributor. If that Commercial
-            Contributor then makes performance claims, or offers
-            warranties related to Product X, those performance claims
-            and warranties are such Commercial Contributor's
-            responsibility alone. Under this section, the Commercial
-            Contributor would have to defend claims against the other
-            Contributors related to those performance claims and
-            warranties, and if a court requires any other Contributor
-            to pay any damages as a result, the Commercial Contributor
-            must pay those damages.
-
-            5. NO WARRANTY
-
-            EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, THE
-            PROGRAM IS PROVIDED ON AN "AS IS" BASIS, WITHOUT
-            WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR
-            IMPLIED INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OR
-            CONDITIONS OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY OR
-            FITNESS FOR A PARTICULAR PURPOSE. Each Recipient is solely
-            responsible for determining the appropriateness of using
-            and distributing the Program and assumes all risks
-            associated with its exercise of rights under this
-            Agreement, including but not limited to the risks and
-            costs of program errors, compliance with applicable laws,
-            damage to or loss of data, programs or equipment, and
-            unavailability or interruption of operations. 
-
-            6. DISCLAIMER OF LIABILITY
-
-            EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, NEITHER
-            RECIPIENT NOR ANY CONTRIBUTORS SHALL HAVE ANY LIABILITY
-            FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-            OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT LIMITATION
-            LOST PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF
-            LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-            (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
-            OF THE USE OR DISTRIBUTION OF THE PROGRAM OR THE EXERCISE
-            OF ANY RIGHTS GRANTED HEREUNDER, EVEN IF ADVISED OF THE
-            POSSIBILITY OF SUCH DAMAGES.
-
-            7. GENERAL
-
-            If any provision of this Agreement is invalid or
-            unenforceable under applicable law, it shall not affect
-            the validity or enforceability of the remainder of the
-            terms of this Agreement, and without further action by the
-            parties hereto, such provision shall be reformed to the
-            minimum extent necessary to make such provision valid and
-            enforceable.
-
-            If Recipient institutes patent litigation against a
-            Contributor with respect to a patent applicable to
-            software (including a cross-claim or counterclaim in a
-            lawsuit), then any patent licenses granted by that
-            Contributor to such Recipient under this Agreement shall
-            terminate as of the date such litigation is filed. In
-            addition, if Recipient institutes patent litigation
-            against any entity (including a cross-claim or
-            counterclaim in a lawsuit) alleging that the Program
-            itself (excluding combinations of the Program with other
-            software or hardware) infringes such Recipient's
-            patent(s), then such Recipient's rights granted under
-            Section 2(b) shall terminate as of the date such
-            litigation is filed.
-
-            All Recipient's rights under this Agreement shall
-            terminate if it fails to comply with any of the material
-            terms or conditions of this Agreement and does not cure
-            such failure in a reasonable period of time after becoming
-            aware of such noncompliance. If all Recipient's rights
-            under this Agreement terminate, Recipient agrees to cease
-            use and distribution of the Program as soon as reasonably
-            practicable. However, Recipient's obligations under this
-            Agreement and any licenses granted by Recipient relating
-            to the Program shall continue and survive. 
-
-            Everyone is permitted to copy and distribute copies of
-            this Agreement, but in order to avoid inconsistency the
-            Agreement is copyrighted and may only be modified in the
-            following manner. The Agreement Steward reserves the right
-            to publish new versions (including revisions) of this
-            Agreement from time to time. No one other than the
-            Agreement Steward has the right to modify this Agreement.
-            IBM is the initial Agreement Steward. IBM may assign the
-            responsibility to serve as the Agreement Steward to a
-            suitable separate entity. Each new version of the
-            Agreement will be given a distinguishing version number.
-            The Program (including Contributions) may always be
-            distributed subject to the version of the Agreement under
-            which it was received. In addition, after a new version of
-            the Agreement is published, Contributor may elect to
-            distribute the Program (including its Contributions) under
-            the new version. Except as expressly stated in Sections
-            2(a) and 2(b) above, Recipient receives no rights or
-            licenses to the intellectual property of any Contributor
-            under this Agreement, whether expressly, by implication,
-            estoppel or otherwise. All rights in the Program not
-            expressly granted under this Agreement are reserved.
-
-            This Agreement is governed by the laws of the State of New
-            York and the intellectual property laws of the United
-            States of America. No party to this Agreement will bring a
-            legal action under this Agreement more than one year after
-            the cause of action arose. Each party waives its rights to
-            a jury trial in any resulting litigation.

@@ -1,28 +1,38 @@
 /************************************************************************/
 /*                                                                      */
-/* PortSentry								*/
+/* Psionic PortSentry							*/
 /*                                                                      */
 /* Created: 10-12-1997                                                  */
-/* Modified: 05-23-2003                                                 */
+/* Modified: 03-05-2002                                                 */
 /*                                                                      */
-/* Send all changes/modifications/bugfixes to:				*/
-/* craigrowland at users dot sourceforge dot net    			*/
+/* Send all changes/modifications/bugfixes to sentrysupport@psionic.com */
 /*                                                                      */
 /*                                                                      */
-/* This software is Copyright(c) 1997-2003 Craig Rowland	        */
+/* This software is Copyright(c) 1997-2002 Psionic Technologies, Inc.   */
 /*                                                                      */
-/* This software is covered under the Common Public License v1.0	*/
-/* See the enclosed LICENSE file for more information.			*/
-/* $Id: portsentry_config.h,v 1.5 2003/05/23 17:41:51 crowland Exp crowland $ */
+/* Disclaimer:                                                          */
+/*                                                                      */
+/* All software distributed by Psionic Technologies is distributed 	*/
+/* AS IS and carries NO WARRANTY or GUARANTEE OF ANY KIND. End users of */
+/* the software acknowledge that they will not hold Psionic Technlogies	*/
+/* liable for failure or non-function of the software product. YOU ARE 	*/
+/* USING THIS PRODUCT AT YOUR OWN RISK.					*/
+/*                                                                      */
+/* Licensing restrictions apply. Commercial re-sell is prohibited under */
+/* certain conditions. See the license that came with this package or 	*/
+/* visit http://www.psionic.com for more information. 			*/
+/*                                                                      */
+/* $Id: portsentry_config.h,v 1.7 2002/04/08 17:23:46 crowland Exp crowland $ */
 /************************************************************************/
 
-
-
-
+/* IMPORTANT NOTE: If you're editing this file DON'T DELETE THE '#' signs! */
+/* We get questions from people who do this thinking they are comments. */
+/* They are not comments and are required. This file is going to disappear */
+/* in the later versions of this program so don't get too attached to it. */
 
 /* These are probably ok. Be sure you change the Makefile if you */
 /* change the path */
-#define CONFIG_FILE "/usr/local/psionic/portsentry/portsentry.conf"
+#define CONFIG_FILE "/usr/local/psionic/portsentry2/portsentry.conf"
 
 /* The location of Wietse Venema's TCP Wrapper hosts.deny file */
 #define WRAPPER_HOSTS_DENY "/etc/hosts.deny"
