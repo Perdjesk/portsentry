@@ -1,0 +1,6 @@
+language: C
+
+env:
+ - TARGET_SYSTEM=linux
+
+script: make ${TARGET_SYSTEM}
